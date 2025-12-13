@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.prose {
+  max-width: none;
+}
+
+.prose pre {
+  background-color: var(--vscode-textBlockQuote-background);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  overflow-x: auto;
+}
+
+.prose code {
+  background-color: var(--vscode-textBlockQuote-background);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem;
+}
+
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+}

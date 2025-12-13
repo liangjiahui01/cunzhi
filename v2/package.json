@@ -1,0 +1,71 @@
+{
+  "name": "waitme",
+  "displayName": "WaitMe",
+  "description": "AI 对话交互拦截工具，让交流持续到底",
+  "version": "0.0.1",
+  "publisher": "imhuso",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "waitme.copyMcpConfig",
+        "title": "WaitMe: Copy MCP Configuration"
+      },
+      {
+        "command": "waitme.copyPrompt",
+        "title": "WaitMe: Copy Reference Prompt"
+      },
+      {
+        "command": "waitme.openSettings",
+        "title": "WaitMe: Open Settings"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "waitme",
+          "title": "WaitMe",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "waitme": [
+        {
+          "type": "webview",
+          "id": "waitme.mainView",
+          "name": "WaitMe"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run build",
+    "build": "pnpm run build:extension && pnpm run build:webview && pnpm run build:mcp",
+    "build:extension": "npx esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build:webview": "cd webview && pnpm run build",
+    "build:mcp": "npx esbuild src/mcp/server.ts --bundle --outfile=dist/mcp-server.js --format=cjs --platform=node",
+    "watch": "pnpm run build:extension -- --watch",
+    "dev": "pnpm run watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "uuid": "^9.0.0"
+  }
+}

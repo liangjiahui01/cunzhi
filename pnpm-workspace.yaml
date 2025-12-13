@@ -1,5 +1,7 @@
 packages:
   - .
+  - '!v2'
+  - '!v2/**'
 
 ignoredBuiltDependencies:
   - '@tailwindcss/oxide'
