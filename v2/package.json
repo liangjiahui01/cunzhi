@@ -55,7 +55,8 @@
     "build:webview": "cd webview && pnpm run build",
     "build:mcp": "npx esbuild src/mcp/server.ts --bundle --outfile=dist/mcp-server.js --format=cjs --platform=node",
     "watch": "pnpm run build:extension -- --watch",
-    "dev": "pnpm run watch"
+    "dev": "pnpm run watch",
+    "package": "pnpm run build && npx @vscode/vsce package --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

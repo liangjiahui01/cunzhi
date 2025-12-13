@@ -40,12 +40,11 @@ export function activate(context: vscode.ExtensionContext) {
             args: [
               context.extensionUri.fsPath + "/dist/mcp-server.js",
             ],
-            timeout: 7200000,
           },
         },
       };
       vscode.env.clipboard.writeText(JSON.stringify(config, null, 2));
-      vscode.window.showInformationMessage("MCP 配置已复制到剪贴板 (timeout: 2小时)");
+      vscode.window.showInformationMessage("MCP 配置已复制到剪贴板");
     })
   );
 
