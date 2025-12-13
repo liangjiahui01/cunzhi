@@ -4,11 +4,28 @@ import { HttpClient } from "./services/http-client";
 
 const HTTP_PORT = 19528;
 
+let statusBarItem: vscode.StatusBarItem;
+
 export function activate(context: vscode.ExtensionContext) {
   console.log("WaitMe extension is now active");
 
   const httpClient = new HttpClient(HTTP_PORT);
   const provider = new WaitMeViewProvider(context.extensionUri, httpClient);
+
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBarItem.command = "waitme.openSettings";
+  context.subscriptions.push(statusBarItem);
+
+  provider.onRequestCountChange = (count: number) => {
+    if (count > 0) {
+      statusBarItem.text = `$(bell) WaitMe (${count})`;
+      statusBarItem.tooltip = `${count} 个待处理请求`;
+      statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+      statusBarItem.show();
+    } else {
+      statusBarItem.hide();
+    }
+  };
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("waitme.mainView", provider)
@@ -23,11 +40,12 @@ export function activate(context: vscode.ExtensionContext) {
             args: [
               context.extensionUri.fsPath + "/dist/mcp-server.js",
             ],
+            timeout: 7200000,
           },
         },
       };
       vscode.env.clipboard.writeText(JSON.stringify(config, null, 2));
-      vscode.window.showInformationMessage("MCP 配置已复制到剪贴板");
+      vscode.window.showInformationMessage("MCP 配置已复制到剪贴板 (timeout: 2小时)");
     })
   );
 

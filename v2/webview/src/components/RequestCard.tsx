@@ -141,7 +141,11 @@ export function RequestCard({
     >
       <div className="p-4">
         <div className="flex items-center justify-between text-xs text-vscode-fg opacity-50 mb-2">
-          <span>{request.projectPath.split("/").pop()}</span>
+          <div className="flex items-center gap-2">
+            <span>{request.projectPath.split("/").pop()}</span>
+            <span className="opacity-60">#{request.requestId.slice(0, 8)}</span>
+            <span className="opacity-60">{new Date(request.timestamp).toLocaleTimeString()}</span>
+          </div>
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="text-red-400 hover:text-red-300 px-1"
@@ -152,21 +156,21 @@ export function RequestCard({
         </div>
 
         {showDeleteConfirm && (
-          <div className="mb-3 p-2 bg-red-900 bg-opacity-30 border border-red-500 rounded text-sm">
-            <p className="text-red-300 mb-2">确定要删除此请求吗？MCP 客户端将收到空响应。</p>
+          <div className="mb-3 p-3 bg-red-950 border border-red-600 rounded-md">
+            <p className="text-red-100 text-sm mb-3">⚠️ 确定要删除此请求吗？MCP 客户端将收到空响应。</p>
             <div className="flex gap-2">
               <button
                 onClick={() => {
                   onDelete(request.requestId);
                   setShowDeleteConfirm(false);
                 }}
-                className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-500"
+                className="px-4 py-1.5 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-500"
               >
                 确认删除
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-1 border border-vscode-border rounded text-xs hover:bg-vscode-secondary"
+                className="px-4 py-1.5 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-500"
               >
                 取消
               </button>
@@ -185,32 +189,59 @@ export function RequestCard({
         </div>
 
         {request.predefinedOptions && request.predefinedOptions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
-            {request.predefinedOptions.map((option) => (
-              <button
-                key={option}
-                onClick={() => handleQuickResponse(option)}
-                disabled={isSubmitting}
-                className={clsx(
-                  "px-3 py-1.5 rounded text-sm transition-colors",
-                  "bg-vscode-button text-vscode-buttonFg",
-                  "hover:bg-vscode-buttonHover",
-                  "disabled:opacity-50 disabled:cursor-not-allowed"
-                )}
-              >
-                {option}
-              </button>
-            ))}
+          <div className="mb-4">
+            <div className="text-xs text-vscode-fg opacity-60 mb-2">选择选项 (可多选):</div>
+            <div className="space-y-1.5">
+              {request.predefinedOptions.map((option) => (
+                <label
+                  key={option}
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2 rounded text-sm cursor-pointer transition-all",
+                    selectedOptions.includes(option)
+                      ? "text-blue-400"
+                      : "text-vscode-fg hover:text-blue-300"
+                  )}
+                >
+                  <span className={clsx(
+                    "w-4 h-4 rounded border-2 flex items-center justify-center text-xs flex-shrink-0",
+                    selectedOptions.includes(option)
+                      ? "bg-blue-500 border-blue-500 text-white"
+                      : "border-gray-500"
+                  )}>
+                    {selectedOptions.includes(option) && "✓"}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={selectedOptions.includes(option)}
+                    onChange={() => {
+                      setSelectedOptions((prev) =>
+                        prev.includes(option)
+                          ? prev.filter((o) => o !== option)
+                          : [...prev, option]
+                      );
+                    }}
+                    disabled={isSubmitting}
+                    className="sr-only"
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="flex flex-wrap gap-1 mb-3">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {QUICK_TEMPLATES.map((tpl) => (
             <button
               key={tpl.id}
               onClick={() => handleQuickTemplate(tpl.content)}
               disabled={isSubmitting}
-              className="px-2 py-1 text-xs rounded border border-vscode-border hover:bg-vscode-secondary transition-colors disabled:opacity-50"
+              className={clsx(
+                "px-2 py-1 text-xs rounded transition-colors",
+                "bg-gray-700 text-gray-300",
+                "hover:bg-gray-600 hover:text-white",
+                "disabled:opacity-50"
+              )}
             >
               {tpl.label}
             </button>
@@ -222,9 +253,13 @@ export function RequestCard({
             {images.map((img, index) => (
               <div key={index} className="relative group">
                 <img
-                  src={img.data}
+                  src={img.data.startsWith("data:") ? img.data : `data:${img.mediaType};base64,${img.data}`}
                   alt={img.filename || "uploaded"}
                   className="h-16 w-16 object-cover rounded border border-vscode-border"
+                  onError={(e) => {
+                    console.error("Image load error:", img.filename);
+                    e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect fill='%23333' width='64' height='64'/%3E%3Ctext x='32' y='32' text-anchor='middle' fill='%23888'%3E?%3C/text%3E%3C/svg%3E";
+                  }}
                 />
                 <button
                   onClick={() => removeImage(index)}
@@ -257,15 +292,15 @@ export function RequestCard({
           <div className="flex items-center gap-2">
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || (!userInput && images.length === 0)}
+              disabled={isSubmitting || (!userInput && selectedOptions.length === 0 && images.length === 0)}
               className={clsx(
-                "flex-1 px-4 py-2 rounded text-sm font-medium transition-colors",
-                "bg-vscode-button text-vscode-buttonFg",
-                "hover:bg-vscode-buttonHover",
+                "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                "bg-green-600 text-white",
+                "hover:bg-green-500 hover:shadow-md",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
             >
-              发送
+              发送{selectedOptions.length > 0 && ` (${selectedOptions.length})`}
             </button>
 
             <button

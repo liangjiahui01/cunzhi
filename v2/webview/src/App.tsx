@@ -12,6 +12,28 @@ declare const acquireVsCodeApi: () => {
 
 const vscode = acquireVsCodeApi();
 
+function loadState<T>(key: string, defaultValue: T): T {
+  try {
+    const state = vscode.getState() as Record<string, unknown> | undefined;
+    if (state && key in state) {
+      return state[key] as T;
+    }
+  } catch (e) {
+    console.error("Failed to load state:", e);
+  }
+  return defaultValue;
+}
+
+function saveState(key: string, value: unknown): void {
+  try {
+    const state = (vscode.getState() as Record<string, unknown>) || {};
+    state[key] = value;
+    vscode.setState(state);
+  } catch (e) {
+    console.error("Failed to save state:", e);
+  }
+}
+
 const INITIAL_CONTEXT_RULES: ContextRule[] = [
   { id: "no_docs", label: "不要生成总结性Markdown文档", enabled: true, content: "❌请记住，不要生成总结性Markdown文档" },
   { id: "no_tests", label: "不要生成测试脚本", enabled: true, content: "❌请记住，不要生成测试脚本" },
@@ -23,10 +45,18 @@ type TabType = "current" | "history";
 
 function App() {
   const [requests, setRequests] = useState<WaitMeRequest[]>([]);
-  const [history, setHistory] = useState<WaitMeRequest[]>([]);
-  const [contextRules, setContextRules] = useState<ContextRule[]>(INITIAL_CONTEXT_RULES);
+  const [history, setHistory] = useState<WaitMeRequest[]>(() => loadState("history", []));
+  const [contextRules, setContextRules] = useState<ContextRule[]>(() => loadState("contextRules", INITIAL_CONTEXT_RULES));
   const [activeTab, setActiveTab] = useState<TabType>("current");
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
+
+  useEffect(() => {
+    saveState("history", history);
+  }, [history]);
+
+  useEffect(() => {
+    saveState("contextRules", contextRules);
+  }, [contextRules]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {

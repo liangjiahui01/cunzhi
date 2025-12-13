@@ -8,10 +8,18 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
   private _extensionUri: vscode.Uri;
   private _httpClient: HttpClient;
   private _pollInterval?: NodeJS.Timeout;
+  private _lastRequestCount: number = 0;
+  public onRequestCountChange?: (count: number) => void;
 
   constructor(extensionUri: vscode.Uri, httpClient: HttpClient) {
     this._extensionUri = extensionUri;
     this._httpClient = httpClient;
+  }
+
+  private _notifyCountChange(count: number): void {
+    if (this.onRequestCountChange) {
+      this.onRequestCountChange(count);
+    }
   }
 
   public resolveWebviewView(
@@ -49,9 +57,13 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
               timestamp: new Date().toISOString(),
             },
           });
+          this._lastRequestCount = Math.max(0, this._lastRequestCount - 1);
+          this._notifyCountChange(this._lastRequestCount);
           break;
         case "deleteRequest":
           await this._httpClient.deleteRequest(message.requestId);
+          this._lastRequestCount = Math.max(0, this._lastRequestCount - 1);
+          this._notifyCountChange(this._lastRequestCount);
           break;
         case "getRequests":
           await this._fetchAndSendRequests();
@@ -91,9 +103,20 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
       const requests = await this._httpClient.getRequests(projectPath);
       this._postMessage({ type: "requests", requests });
 
-      if (requests.length > 0) {
+      this._notifyCountChange(requests.length);
+
+      if (requests.length > this._lastRequestCount && requests.length > 0) {
         this._view?.show(true);
+        vscode.window.showInformationMessage(
+          `WaitMe: 有 ${requests.length} 个待处理请求`,
+          "查看"
+        ).then((action) => {
+          if (action === "查看") {
+            this._view?.show(true);
+          }
+        });
       }
+      this._lastRequestCount = requests.length;
     } catch (error) {
       console.error("Failed to fetch requests:", error);
     }
@@ -118,7 +141,7 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: blob:;">
   <link href="${styleUri}" rel="stylesheet">
   <title>WaitMe</title>
 </head>
