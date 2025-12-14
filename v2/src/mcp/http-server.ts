@@ -14,6 +14,8 @@ export class HttpServer {
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private registeredWindows: Map<string, WindowRegistration> = new Map();
   private requestsByProject: Map<string, WaitMeRequest[]> = new Map();
+  private proxyResponses: Map<string, WaitMeResponse> = new Map();
+  private isProxy: boolean = false;
 
   constructor(port: number) {
     this.port = port;
@@ -24,7 +26,8 @@ export class HttpServer {
     return new Promise((resolve, reject) => {
       this.server.on("error", (err: NodeJS.ErrnoException) => {
         if (err.code === "EADDRINUSE") {
-          console.error(`Port ${this.port} is already in use`);
+          console.error(`Port ${this.port} is already in use, running in proxy mode`);
+          this.isProxy = true;
           resolve();
         } else {
           reject(err);
@@ -39,6 +42,10 @@ export class HttpServer {
   }
 
   async waitForResponse(request: WaitMeRequest): Promise<WaitMeResponse> {
+    if (this.isProxy) {
+      return this.proxyWaitForResponse(request);
+    }
+
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(request.requestId, {
         request,
@@ -52,6 +59,71 @@ export class HttpServer {
       this.requestsByProject.set(request.projectPath, projectRequests);
 
       this.notifyWindows(request);
+    });
+  }
+
+  private async proxyWaitForResponse(request: WaitMeRequest): Promise<WaitMeResponse> {
+    await this.httpPost("/api/proxy/add", request);
+
+    while (true) {
+      await new Promise((r) => setTimeout(r, 500));
+      
+      const data = await this.httpGet(`/api/proxy/poll/${request.requestId}`);
+      if (data.response) {
+        return data.response;
+      }
+    }
+  }
+
+  private httpPost(path: string, body: unknown): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const data = JSON.stringify(body);
+      const req = http.request({
+        hostname: "127.0.0.1",
+        port: this.port,
+        path,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(data),
+        },
+      }, (res) => {
+        let responseData = "";
+        res.on("data", (chunk) => (responseData += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(responseData));
+          } catch {
+            resolve({});
+          }
+        });
+      });
+      req.on("error", reject);
+      req.write(data);
+      req.end();
+    });
+  }
+
+  private httpGet(path: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const req = http.request({
+        hostname: "127.0.0.1",
+        port: this.port,
+        path,
+        method: "GET",
+      }, (res) => {
+        let responseData = "";
+        res.on("data", (chunk) => (responseData += chunk));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(responseData));
+          } catch {
+            resolve({});
+          }
+        });
+      });
+      req.on("error", reject);
+      req.end();
     });
   }
 
@@ -95,6 +167,10 @@ export class HttpServer {
       this.handlePoll(url, res);
     } else if (req.method === "DELETE" && url.pathname.startsWith("/api/request/")) {
       this.handleDelete(url, res);
+    } else if (req.method === "POST" && url.pathname === "/api/proxy/add") {
+      this.handleProxyAdd(req, res);
+    } else if (req.method === "GET" && url.pathname.startsWith("/api/proxy/poll/")) {
+      this.handleProxyPoll(url, res);
     } else {
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not found" }));
@@ -245,6 +321,7 @@ export class HttpServer {
 
         pending.resolve(response);
         this.pendingRequests.delete(data.requestId);
+        this.proxyResponses.set(data.requestId, response);
 
         const projectRequests =
           this.requestsByProject.get(pending.request.projectPath) || [];
@@ -272,6 +349,61 @@ export class HttpServer {
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ requests }));
+  }
+
+  private handleProxyAdd(req: http.IncomingMessage, res: http.ServerResponse): void {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try {
+        const request = JSON.parse(body) as WaitMeRequest;
+        
+        this.pendingRequests.set(request.requestId, {
+          request,
+          resolve: () => {},
+          reject: () => {},
+        });
+
+        const projectRequests = this.requestsByProject.get(request.projectPath) || [];
+        projectRequests.push(request);
+        this.requestsByProject.set(request.projectPath, projectRequests);
+
+        this.notifyWindows(request);
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Invalid JSON" }));
+      }
+    });
+  }
+
+  private handleProxyPoll(url: URL, res: http.ServerResponse): void {
+    const requestId = url.pathname.split("/").pop();
+    if (!requestId) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Missing request ID" }));
+      return;
+    }
+
+    const response = this.proxyResponses.get(requestId);
+    if (response) {
+      this.proxyResponses.delete(requestId);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ response }));
+      return;
+    }
+
+    const pending = this.pendingRequests.get(requestId);
+    if (!pending) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ response: null, completed: true }));
+      return;
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ response: null, completed: false }));
   }
 
   private handleDelete(url: URL, res: http.ServerResponse): void {

@@ -72,10 +72,17 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
     });
 
     this._startPolling();
+    this._sendProjectPath();
 
     webviewView.onDidDispose(() => {
       this._stopPolling();
     });
+  }
+
+  private _sendProjectPath(): void {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const projectPath = workspaceFolders?.[0]?.uri.fsPath || "";
+    this._postMessage({ type: "projectPath", projectPath });
   }
 
   public show() {
@@ -98,9 +105,7 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
 
   private async _fetchAndSendRequests() {
     try {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      const projectPath = workspaceFolders?.[0]?.uri.fsPath;
-      const requests = await this._httpClient.getRequests(projectPath);
+      const requests = await this._httpClient.getRequests();
       this._postMessage({ type: "requests", requests });
 
       this._notifyCountChange(requests.length);
