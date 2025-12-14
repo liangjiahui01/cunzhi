@@ -57,13 +57,13 @@ export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
             <>
               <button
                 onClick={selectAll}
-                className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600"
+                className="px-2 py-1 text-xs rounded bg-vscode-input text-vscode-fg hover:opacity-80"
               >
                 全选
               </button>
               <button
                 onClick={clearSelection}
-                className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600"
+                className="px-2 py-1 text-xs rounded bg-vscode-input text-vscode-fg hover:opacity-80"
               >
                 取消
               </button>
@@ -79,7 +79,7 @@ export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
           ) : (
             <button
               onClick={() => setIsSelecting(true)}
-              className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 hover:bg-gray-600"
+              className="px-2 py-1 text-xs rounded bg-vscode-input text-vscode-fg hover:opacity-80"
             >
               选择
             </button>

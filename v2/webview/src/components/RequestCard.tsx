@@ -141,10 +141,10 @@ export function RequestCard({
     >
       <div className="p-4">
         <div className="flex items-center justify-between text-xs text-vscode-fg opacity-50 mb-2">
-          <div className="flex items-center gap-2">
-            <span>{request.projectPath.split("/").pop()}</span>
-            <span className="opacity-60">#{request.requestId.slice(0, 8)}</span>
-            <span className="opacity-60">{new Date(request.timestamp).toLocaleTimeString()}</span>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="truncate" title={request.projectPath}>{request.projectPath}</span>
+            <span className="opacity-60 shrink-0">#{request.requestId.slice(0, 8)}</span>
+            <span className="opacity-60 shrink-0">{new Date(request.timestamp).toLocaleTimeString()}</span>
           </div>
           <button
             onClick={() => setShowDeleteConfirm(true)}
@@ -170,7 +170,7 @@ export function RequestCard({
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-1.5 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-500"
+                className="px-4 py-1.5 bg-vscode-input text-vscode-fg rounded-md text-sm hover:opacity-80"
               >
                 取消
               </button>
@@ -238,8 +238,8 @@ export function RequestCard({
               disabled={isSubmitting}
               className={clsx(
                 "px-2 py-1 text-xs rounded transition-colors",
-                "bg-gray-700 text-gray-300",
-                "hover:bg-gray-600 hover:text-white",
+                "bg-vscode-input text-vscode-fg",
+                "hover:opacity-80",
                 "disabled:opacity-50"
               )}
             >

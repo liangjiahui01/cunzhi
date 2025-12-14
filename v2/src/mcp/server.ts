@@ -183,6 +183,39 @@ export class WaitMeServer {
     await this.server.connect(transport);
     console.error("WaitMe MCP Server running on stdio");
     console.error(`HTTP Server listening on port ${HTTP_PORT}`);
+
+    // 优雅退出：等待队列为空
+    const gracefulShutdown = async () => {
+      console.error("MCP Server received shutdown signal...");
+      
+      // 检查是否有待处理的请求
+      const pendingCount = this.httpServer.getPendingCount();
+      if (pendingCount > 0) {
+        console.error(`Waiting for ${pendingCount} pending requests to complete...`);
+        // 等待最多 30 秒
+        const maxWait = 30;
+        for (let i = 0; i < maxWait; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          const remaining = this.httpServer.getPendingCount();
+          if (remaining === 0) {
+            console.error("All requests completed, exiting...");
+            break;
+          }
+          console.error(`Still waiting... ${remaining} requests remaining (${maxWait - i - 1}s left)`);
+        }
+      }
+      
+      console.error("MCP Server shutting down...");
+      process.exit(0);
+    };
+
+    process.on("SIGINT", gracefulShutdown);
+    process.on("SIGTERM", gracefulShutdown);
+    process.on("SIGHUP", gracefulShutdown);
+
+    // 监听 stdin 关闭 (父进程断开)
+    process.stdin.on("close", gracefulShutdown);
+    process.stdin.on("end", gracefulShutdown);
   }
 }
 

@@ -41,6 +41,17 @@ export class HttpServer {
     });
   }
 
+  stop(): void {
+    if (!this.isProxy) {
+      this.server.close();
+      console.error("HTTP Server stopped");
+    }
+  }
+
+  getPendingCount(): number {
+    return this.pendingRequests.size;
+  }
+
   async waitForResponse(request: WaitMeRequest): Promise<WaitMeResponse> {
     if (this.isProxy) {
       return this.proxyWaitForResponse(request);
@@ -171,6 +182,8 @@ export class HttpServer {
       this.handleProxyAdd(req, res);
     } else if (req.method === "GET" && url.pathname.startsWith("/api/proxy/poll/")) {
       this.handleProxyPoll(url, res);
+    } else if (req.method === "POST" && url.pathname === "/api/restart") {
+      this.handleRestart(res);
     } else {
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not found" }));
@@ -404,6 +417,31 @@ export class HttpServer {
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ response: null, completed: false }));
+  }
+
+  private handleRestart(res: http.ServerResponse): void {
+    // 清除所有待处理的请求
+    for (const [requestId, pending] of this.pendingRequests) {
+      const response: WaitMeResponse = {
+        userInput: "[服务已重启，请求被取消]",
+        selectedOptions: [],
+        images: [],
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId,
+          projectPath: pending.request.projectPath,
+        },
+      };
+      pending.resolve(response);
+    }
+    this.pendingRequests.clear();
+    this.requestsByProject.clear();
+    this.proxyResponses.clear();
+    this.registeredWindows.clear();
+
+    console.error("Server restarted, all pending requests cleared");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: true }));
   }
 
   private handleDelete(url: URL, res: http.ServerResponse): void {

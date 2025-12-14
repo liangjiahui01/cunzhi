@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { RequestCard } from "./components/RequestCard";
 import { HistoryList } from "./components/HistoryList";
 import { DetailModal } from "./components/DetailModal";
-import type { WaitMeRequest, ImageAttachment, ContextRule } from "./types";
+import type { WaitMeRequest, ImageAttachment, ContextRule, WaitMeConfig } from "./types";
 
 declare const acquireVsCodeApi: () => {
   postMessage: (message: unknown) => void;
@@ -51,6 +51,7 @@ function App() {
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
   const [projectFilter, setProjectFilter] = useState<string>("current");
   const [currentProjectPath, setCurrentProjectPath] = useState<string>("");
+  const [config, setConfig] = useState<WaitMeConfig>({ theme: "system", showToast: true });
 
   const filteredRequests = useMemo(() => {
     if (projectFilter === "all") return requests;
@@ -87,6 +88,9 @@ function App() {
           break;
         case "projectPath":
           setCurrentProjectPath(message.projectPath);
+          break;
+        case "config":
+          setConfig(message.config);
           break;
       }
     };
@@ -141,8 +145,19 @@ function App() {
     setHistory((prev) => prev.filter((h) => !ids.includes(h.requestId)));
   }, []);
 
+  const effectiveTheme = useMemo(() => {
+    if (config.theme === "system") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return config.theme;
+  }, [config.theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", effectiveTheme);
+  }, [effectiveTheme]);
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className={`flex flex-col h-screen theme-${effectiveTheme}`}>
       <div className="border-b border-vscode-border">
         <div className="flex items-center gap-1 p-2">
           <button
@@ -181,7 +196,7 @@ function App() {
               className={`px-2 py-0.5 text-xs rounded whitespace-nowrap transition-colors ${
                 projectFilter === "current"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  : "bg-vscode-input text-vscode-fg hover:opacity-80"
               }`}
             >
               当前项目 ({currentProjectPath ? requests.filter((r) => r.projectPath === currentProjectPath).length : 0})
@@ -191,7 +206,7 @@ function App() {
               className={`px-2 py-0.5 text-xs rounded whitespace-nowrap transition-colors ${
                 projectFilter === "all"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  : "bg-vscode-input text-vscode-fg hover:opacity-80"
               }`}
             >
               全部项目 ({requests.length})

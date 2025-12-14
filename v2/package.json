@@ -27,6 +27,14 @@
       {
         "command": "waitme.openSettings",
         "title": "WaitMe: Open Settings"
+      },
+      {
+        "command": "waitme.restartServer",
+        "title": "WaitMe: Restart Server"
+      },
+      {
+        "command": "waitme.killServer",
+        "title": "WaitMe: Kill Server (Force)"
       }
     ],
     "viewsContainers": {
@@ -46,6 +54,27 @@
           "name": "WaitMe"
         }
       ]
+    },
+    "configuration": {
+      "title": "WaitMe",
+      "properties": {
+        "waitme.theme": {
+          "type": "string",
+          "default": "system",
+          "enum": ["system", "light", "dark"],
+          "enumDescriptions": [
+            "跟随系统主题",
+            "浅色主题",
+            "深色主题"
+          ],
+          "description": "界面主题"
+        },
+        "waitme.showToast": {
+          "type": "boolean",
+          "default": true,
+          "description": "新请求时显示 Toast 提示"
+        }
+      }
     }
   },
   "scripts": {

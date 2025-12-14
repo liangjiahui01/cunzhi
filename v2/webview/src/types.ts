@@ -50,3 +50,8 @@ export const DEFAULT_CONTEXT_RULES: ContextRule[] = [
   { id: "no_compile", label: "不要编译，用户自己编译", enabled: true, content: "❌请记住，不要编译，用户自己编译" },
   { id: "no_run", label: "不要运行，用户自己运行", enabled: true, content: "❌请记住，不要运行，用户自己运行" },
 ];
+
+export interface WaitMeConfig {
+  theme: "system" | "light" | "dark";
+  showToast: boolean;
+}

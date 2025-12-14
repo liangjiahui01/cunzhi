@@ -69,4 +69,14 @@ export class HttpClient {
       throw new Error(`Failed to delete request: ${response.statusText}`);
     }
   }
+
+  async restartServer(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/restart`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to restart server: ${response.statusText}`);
+    }
+  }
 }

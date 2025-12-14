@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { HttpClient } from "../services/http-client";
 import type { WaitMeRequest } from "../types";
+import type { WaitMeConfig } from "../extension";
 
 export class WaitMeViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "waitme.mainView";
@@ -9,17 +10,23 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
   private _httpClient: HttpClient;
   private _pollInterval?: NodeJS.Timeout;
   private _lastRequestCount: number = 0;
-  public onRequestCountChange?: (count: number) => void;
+  private _config: WaitMeConfig = { theme: "system", showToast: true };
+  public onRequestCountChange?: (count: number, isNew: boolean) => void;
 
   constructor(extensionUri: vscode.Uri, httpClient: HttpClient) {
     this._extensionUri = extensionUri;
     this._httpClient = httpClient;
   }
 
-  private _notifyCountChange(count: number): void {
+  private _notifyCountChange(count: number, isNew: boolean = false): void {
     if (this.onRequestCountChange) {
-      this.onRequestCountChange(count);
+      this.onRequestCountChange(count, isNew);
     }
+  }
+
+  public setConfig(config: WaitMeConfig): void {
+    this._config = config;
+    this._postMessage({ type: "config", config });
   }
 
   public resolveWebviewView(
@@ -73,6 +80,7 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
 
     this._startPolling();
     this._sendProjectPath();
+    this._postMessage({ type: "config", config: this._config });
 
     webviewView.onDidDispose(() => {
       this._stopPolling();
@@ -108,18 +116,11 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
       const requests = await this._httpClient.getRequests();
       this._postMessage({ type: "requests", requests });
 
-      this._notifyCountChange(requests.length);
+      const isNew = requests.length > this._lastRequestCount;
+      this._notifyCountChange(requests.length, isNew);
 
-      if (requests.length > this._lastRequestCount && requests.length > 0) {
+      if (isNew && requests.length > 0) {
         this._view?.show(true);
-        vscode.window.showInformationMessage(
-          `WaitMe: 有 ${requests.length} 个待处理请求`,
-          "查看"
-        ).then((action) => {
-          if (action === "查看") {
-            this._view?.show(true);
-          }
-        });
       }
       this._lastRequestCount = requests.length;
     } catch (error) {
