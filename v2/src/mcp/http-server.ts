@@ -298,7 +298,7 @@ export class HttpServer {
           requestId: string;
           userInput?: string;
           selectedOptions?: string[];
-          images?: Array<{ data: string; mediaType: string; filename?: string }>;
+          images?: Array<{ data: string; media_type: string; filename?: string }>;
         };
 
         const pending = this.pendingRequests.get(data.requestId);

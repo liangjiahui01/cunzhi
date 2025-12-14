@@ -4,7 +4,7 @@
 
 :root {
   font-family: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--vscode-foreground);
   background-color: var(--vscode-editor-background);
@@ -17,8 +17,8 @@ body {
 
 .prose {
   max-width: none;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .prose p {

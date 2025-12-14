@@ -56,7 +56,7 @@
     "build:mcp": "npx esbuild src/mcp/server.ts --bundle --outfile=dist/mcp-server.js --format=cjs --platform=node",
     "watch": "pnpm run build:extension -- --watch",
     "dev": "pnpm run watch",
-    "package": "pnpm run build && npx @vscode/vsce package --no-dependencies"
+    "package": "pnpm run build && npx @vscode/vsce package --no-dependencies --allow-missing-repository"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

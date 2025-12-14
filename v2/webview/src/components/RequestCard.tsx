@@ -79,7 +79,7 @@ export function RequestCard({
             const base64 = await fileToBase64(file);
             setImages((prev) => [
               ...prev,
-              { data: base64, mediaType: file.type, filename: file.name || "pasted-image.png" },
+              { data: base64, media_type: file.type, filename: file.name || "pasted-image.png" },
             ]);
           } catch (err) {
             console.error("Failed to process pasted image:", err);
@@ -98,7 +98,7 @@ export function RequestCard({
           const base64 = await fileToBase64(file);
           setImages((prev) => [
             ...prev,
-            { data: base64, mediaType: file.type, filename: file.name },
+            { data: base64, media_type: file.type, filename: file.name },
           ]);
         } catch (err) {
           console.error("Failed to process dropped image:", err);
@@ -117,7 +117,7 @@ export function RequestCard({
             const base64 = await fileToBase64(file);
             setImages((prev) => [
               ...prev,
-              { data: base64, mediaType: file.type, filename: file.name },
+              { data: base64, media_type: file.type, filename: file.name },
             ]);
           } catch (err) {
             console.error("Failed to process selected image:", err);
@@ -253,7 +253,7 @@ export function RequestCard({
             {images.map((img, index) => (
               <div key={index} className="relative group">
                 <img
-                  src={img.data.startsWith("data:") ? img.data : `data:${img.mediaType};base64,${img.data}`}
+                  src={img.data.startsWith("data:") ? img.data : `data:${img.media_type};base64,${img.data}`}
                   alt={img.filename || "uploaded"}
                   className="h-16 w-16 object-cover rounded border border-vscode-border"
                   onError={(e) => {

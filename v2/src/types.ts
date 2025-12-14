@@ -20,7 +20,7 @@ export interface WaitMeResponse {
 
 export interface ImageAttachment {
   data: string;
-  mediaType: string;
+  media_type: string;
   filename?: string;
 }
 
