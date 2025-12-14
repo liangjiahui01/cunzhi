@@ -280,13 +280,13 @@ export function RequestCard({
             placeholder="输入回复... (可粘贴/拖拽图片)"
             disabled={isSubmitting}
             className={clsx(
-              "w-full px-3 py-2 rounded resize-none",
+              "w-full px-3 py-2 rounded resize-y",
               "bg-vscode-input text-vscode-inputFg border border-vscode-inputBorder",
               "focus:outline-none focus:ring-1 focus:ring-vscode-button",
               "disabled:opacity-50",
-              "min-h-[80px]"
+              "min-h-[100px] max-h-[300px]"
             )}
-            rows={3}
+            rows={4}
           />
 
           <div className="flex items-center gap-2">

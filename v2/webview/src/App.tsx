@@ -137,6 +137,10 @@ function App() {
     setHistory([]);
   }, []);
 
+  const deleteHistoryItems = useCallback((ids: string[]) => {
+    setHistory((prev) => prev.filter((h) => !ids.includes(h.requestId)));
+  }, []);
+
   return (
     <div className="flex flex-col h-screen">
       <div className="border-b border-vscode-border">
@@ -198,7 +202,7 @@ function App() {
 
       <div className="flex-1 overflow-y-auto p-3">
         {activeTab === "history" ? (
-          <HistoryList history={history} onItemClick={setSelectedItem} />
+          <HistoryList history={history} onItemClick={setSelectedItem} onDeleteItems={deleteHistoryItems} />
         ) : filteredRequests.length === 0 ? (
           <div className="flex items-center justify-center h-full text-vscode-fg opacity-50">
             <p>暂无待处理请求</p>
