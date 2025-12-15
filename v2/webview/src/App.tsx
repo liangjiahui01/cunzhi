@@ -51,6 +51,7 @@ function App() {
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>("");
   const [config, setConfig] = useState<WaitMeConfig>({ theme: "system", showToast: true });
+  const [serverOnline, setServerOnline] = useState<boolean>(false);
 
   const filteredRequests = useMemo(() => {
     if (activeTab === "all") return requests;
@@ -93,6 +94,9 @@ function App() {
           break;
         case "config":
           setConfig(message.config);
+          break;
+        case "serverStatus":
+          setServerOnline(message.online);
           break;
       }
     };
@@ -208,6 +212,26 @@ function App() {
             🗑️
           </button>
         )}
+        {/* 底部服务状态 */}
+        <div className="mt-auto border-t border-vscode-border">
+          <button
+            onClick={() => {
+              if (serverOnline) {
+                vscode.postMessage({ type: "stopServer" });
+              } else {
+                vscode.postMessage({ type: "startServer" });
+              }
+            }}
+            title={serverOnline ? "服务在线 - 点击停止" : "服务离线 - 点击启动"}
+            className={`w-full px-2 py-3 text-sm text-center transition-colors ${
+              serverOnline 
+                ? "text-green-500 hover:bg-red-500/20" 
+                : "text-red-500 hover:bg-green-500/20"
+            }`}
+          >
+            {serverOnline ? "⚡" : "⏻"}
+          </button>
+        </div>
       </div>
 
       {/* 右侧内容区 */}

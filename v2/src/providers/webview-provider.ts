@@ -1,33 +1,39 @@
 import * as vscode from "vscode";
 import { HttpClient } from "../services/http-client";
-import type { WaitMeRequest } from "../types";
+import { WebviewController, WebviewHost } from "./webview-controller";
 import type { WaitMeConfig } from "../extension";
-import { WEBVIEW_POLL_INTERVAL } from "../config";
 
 export class WaitMeViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "waitme.mainView";
   private _view?: vscode.WebviewView;
-  private _extensionUri: vscode.Uri;
-  private _httpClient: HttpClient;
-  private _pollInterval?: NodeJS.Timeout;
-  private _lastRequestCount: number = 0;
-  private _config: WaitMeConfig = { theme: "system", showToast: true };
-  public onRequestCountChange?: (count: number, isNew: boolean) => void;
+  private _controller: WebviewController;
 
   constructor(extensionUri: vscode.Uri, httpClient: HttpClient) {
-    this._extensionUri = extensionUri;
-    this._httpClient = httpClient;
+    this._controller = new WebviewController(extensionUri, httpClient);
   }
 
-  private _notifyCountChange(count: number, isNew: boolean = false): void {
-    if (this.onRequestCountChange) {
-      this.onRequestCountChange(count, isNew);
-    }
+  public get onRequestCountChange() {
+    return this._controller.onRequestCountChange;
+  }
+
+  public set onRequestCountChange(callback: ((count: number, isNew: boolean) => void) | undefined) {
+    this._controller.onRequestCountChange = callback;
+  }
+
+  public set onStartServer(callback: (() => void) | undefined) {
+    this._controller.onStartServer = callback;
+  }
+
+  public set onStopServer(callback: (() => void) | undefined) {
+    this._controller.onStopServer = callback;
+  }
+
+  public sendServerStatus(online: boolean): void {
+    this._controller.sendServerStatus(online);
   }
 
   public setConfig(config: WaitMeConfig): void {
-    this._config = config;
-    this._postMessage({ type: "config", config });
+    this._controller.setConfig(config);
   }
 
   public resolveWebviewView(
@@ -40,58 +46,26 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [
-        vscode.Uri.joinPath(this._extensionUri, "webview", "dist"),
+        vscode.Uri.joinPath(this._controller["_extensionUri"], "webview", "dist"),
       ],
     };
 
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    webviewView.webview.html = this._controller.getHtmlForWebview(webviewView.webview, false);
 
-    webviewView.webview.onDidReceiveMessage(async (message) => {
-      switch (message.type) {
-        case "response":
-          await this._httpClient.sendResponse(
-            message.requestId,
-            message.userInput,
-            message.selectedOptions,
-            message.images
-          );
-          this._postMessage({
-            type: "responseSent",
-            requestId: message.requestId,
-            response: {
-              userInput: message.userInput,
-              selectedOptions: message.selectedOptions,
-              images: message.images,
-              timestamp: new Date().toISOString(),
-            },
-          });
-          this._lastRequestCount = Math.max(0, this._lastRequestCount - 1);
-          this._notifyCountChange(this._lastRequestCount);
-          break;
-        case "deleteRequest":
-          await this._httpClient.deleteRequest(message.requestId);
-          this._lastRequestCount = Math.max(0, this._lastRequestCount - 1);
-          this._notifyCountChange(this._lastRequestCount);
-          break;
-        case "getRequests":
-          await this._fetchAndSendRequests();
-          break;
-      }
-    });
+    const host: WebviewHost = {
+      postMessage: (message) => webviewView.webview.postMessage(message),
+      onDidReceiveMessage: (callback) => {
+        webviewView.webview.onDidReceiveMessage(callback);
+      },
+    };
 
-    this._startPolling();
-    this._sendProjectPath();
-    this._postMessage({ type: "config", config: this._config });
+    this._controller.setHost(host);
+    this._controller.startPolling();
+    this._controller.sendProjectPath();
 
     webviewView.onDidDispose(() => {
-      this._stopPolling();
+      this._controller.stopPolling();
     });
-  }
-
-  private _sendProjectPath(): void {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    const projectPath = workspaceFolders?.[0]?.uri.fsPath || "";
-    this._postMessage({ type: "projectPath", projectPath });
   }
 
   public show() {
@@ -99,73 +73,4 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
       this._view.show(true);
     }
   }
-
-  private _startPolling() {
-    this._pollInterval = setInterval(() => {
-      this._fetchAndSendRequests();
-    }, WEBVIEW_POLL_INTERVAL);
-  }
-
-  private _stopPolling() {
-    if (this._pollInterval) {
-      clearInterval(this._pollInterval);
-    }
-  }
-
-  private async _fetchAndSendRequests() {
-    try {
-      const requests = await this._httpClient.getRequests();
-      this._postMessage({ type: "requests", requests });
-
-      const isNew = requests.length > this._lastRequestCount;
-      this._notifyCountChange(requests.length, isNew);
-
-      if (isNew && requests.length > 0) {
-        this._view?.show(true);
-      }
-      this._lastRequestCount = requests.length;
-    } catch (error) {
-      console.error("Failed to fetch requests:", error);
-    }
-  }
-
-  private _postMessage(message: any) {
-    this._view?.webview.postMessage(message);
-  }
-
-  private _getHtmlForWebview(webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "webview", "dist", "index.js")
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "webview", "dist", "index.css")
-    );
-
-    const nonce = getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: blob:;">
-  <link href="${styleUri}" rel="stylesheet">
-  <title>WaitMe</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
-  }
-}
-
-function getNonce() {
-  let text = "";
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
 }

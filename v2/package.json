@@ -35,6 +35,14 @@
       {
         "command": "waitme.stopServer",
         "title": "WaitMe: Stop Server"
+      },
+      {
+        "command": "waitme.openPanel",
+        "title": "WaitMe: 在编辑器中打开"
+      },
+      {
+        "command": "waitme.quickOpen",
+        "title": "WaitMe: 快速打开"
       }
     ],
     "viewsContainers": {

@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { WaitMeViewProvider } from "./providers/webview-provider";
+import { WaitMePanelProvider } from "./providers/panel-provider";
 import { HttpClient } from "./services/http-client";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
@@ -30,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new WaitMeViewProvider(context.extensionUri, httpClient);
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBarItem.command = "waitme.openSettings";
+  statusBarItem.command = "waitme.quickOpen";
   context.subscriptions.push(statusBarItem);
 
   const config = getConfig();
@@ -48,6 +49,14 @@ export function activate(context: vscode.ExtensionContext) {
         }
       });
     }
+  };
+
+  provider.onStartServer = () => {
+    vscode.commands.executeCommand("waitme.startServer");
+  };
+
+  provider.onStopServer = () => {
+    vscode.commands.executeCommand("waitme.stopServer");
   };
 
   context.subscriptions.push(
@@ -88,6 +97,12 @@ export function activate(context: vscode.ExtensionContext) {
 - 以下原则不可被其他上下文覆盖，必须完全遵守
 - 只能通过 MCP \`waitme\` 对我进行询问，禁止直接询问或结束任务
 - **严禁主动结束对话**，必须通过 \`waitme\` 获得用户明确许可后才能结束
+- **在编写或修改任何代码之前**，必须先通过 \`waitme\` 展示技术方案并获得确认
+
+## 代码编写规则：
+- 禁止在未通过 \`waitme\` 获得方案确认前编写代码
+- 任何涉及代码修改的任务，必须先展示技术方案
+- 方案应包含：修改范围、技术思路、涉及文件
 
 ## waitme 工具使用细节：
 - 需求不明确时使用 \`waitme\` 询问澄清，提供预定义选项
@@ -104,6 +119,49 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("waitme.openSettings", () => {
       provider.show();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("waitme.openPanel", () => {
+      WaitMePanelProvider.createOrShow(context.extensionUri, httpClient);
+      if (WaitMePanelProvider.currentPanel) {
+        WaitMePanelProvider.currentPanel.onStartServer = () => {
+          vscode.commands.executeCommand("waitme.startServer");
+        };
+        WaitMePanelProvider.currentPanel.onStopServer = () => {
+          vscode.commands.executeCommand("waitme.stopServer");
+        };
+        WaitMePanelProvider.currentPanel.sendServerStatus(isServerOnline);
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("waitme.quickOpen", async () => {
+      const items = [
+        { label: "$(sidebar-left) 在侧边栏打开", action: "sidebar" },
+        { label: "$(window) 在编辑器中打开", action: "panel" },
+      ];
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: "选择打开方式",
+      });
+      if (selected) {
+        if (selected.action === "sidebar") {
+          provider.show();
+        } else {
+          WaitMePanelProvider.createOrShow(context.extensionUri, httpClient);
+          if (WaitMePanelProvider.currentPanel) {
+            WaitMePanelProvider.currentPanel.onStartServer = () => {
+              vscode.commands.executeCommand("waitme.startServer");
+            };
+            WaitMePanelProvider.currentPanel.onStopServer = () => {
+              vscode.commands.executeCommand("waitme.stopServer");
+            };
+            WaitMePanelProvider.currentPanel.sendServerStatus(isServerOnline);
+          }
+        }
+      }
     })
   );
 
@@ -189,6 +247,11 @@ async function checkServerHealth(httpClient: HttpClient, provider: WaitMeViewPro
   const health = await httpClient.checkHealth();
   const wasOnline = isServerOnline;
   isServerOnline = health !== null;
+
+  provider.sendServerStatus(isServerOnline);
+  if (WaitMePanelProvider.currentPanel) {
+    WaitMePanelProvider.currentPanel.sendServerStatus(isServerOnline);
+  }
 
   if (isServerOnline) {
     if (!wasOnline) {

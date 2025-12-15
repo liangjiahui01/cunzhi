@@ -111,7 +111,19 @@ html, body, #root {
 .prose pre code {
   background-color: transparent;
   padding: 0;
-  color: #f8f8f2;
+  color: inherit;
+}
+
+.theme-light .prose pre {
+  background-color: var(--wm-code-bg, #f0f0f0) !important;
+}
+
+.theme-light .prose pre code {
+  color: #1e1e1e !important;
+}
+
+.theme-dark .prose pre code {
+  color: #f8f8f2 !important;
 }
 
 .prose blockquote {
