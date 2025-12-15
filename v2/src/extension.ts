@@ -62,7 +62,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("waitme")) {
-        provider.setConfig(getConfig());
+        const newConfig = getConfig();
+        provider.setConfig(newConfig);
+        if (WaitMePanelProvider.currentPanel) {
+          WaitMePanelProvider.currentPanel.setConfig(newConfig);
+        }
       }
     })
   );
@@ -126,6 +130,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("waitme.openPanel", () => {
       WaitMePanelProvider.createOrShow(context.extensionUri, httpClient);
       if (WaitMePanelProvider.currentPanel) {
+        WaitMePanelProvider.currentPanel.setConfig(getConfig());
         WaitMePanelProvider.currentPanel.onStartServer = () => {
           vscode.commands.executeCommand("waitme.startServer");
         };
@@ -152,6 +157,7 @@ export function activate(context: vscode.ExtensionContext) {
         } else {
           WaitMePanelProvider.createOrShow(context.extensionUri, httpClient);
           if (WaitMePanelProvider.currentPanel) {
+            WaitMePanelProvider.currentPanel.setConfig(getConfig());
             WaitMePanelProvider.currentPanel.onStartServer = () => {
               vscode.commands.executeCommand("waitme.startServer");
             };
