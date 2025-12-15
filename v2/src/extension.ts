@@ -1,10 +1,16 @@
 import * as vscode from "vscode";
 import { WaitMeViewProvider } from "./providers/webview-provider";
 import { HttpClient } from "./services/http-client";
+import { spawn, ChildProcess } from "child_process";
+import * as path from "path";
 
 const HTTP_PORT = 19528;
+const HEALTH_CHECK_INTERVAL = 5000; // 5 seconds
 
 let statusBarItem: vscode.StatusBarItem;
+let serverProcess: ChildProcess | null = null;
+let healthCheckTimer: NodeJS.Timeout | null = null;
+let isServerOnline = false;
 
 export interface WaitMeConfig {
   theme: "system" | "light" | "dark";
@@ -152,6 +158,57 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   registerToHttpServer(httpClient);
+  startHealthCheck(httpClient, provider);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("waitme.startServer", async () => {
+      if (serverProcess) {
+        vscode.window.showWarningMessage("WaitMe 服务已在运行中");
+        return;
+      }
+
+      const serverPath = path.join(context.extensionPath, "dist", "standalone-server.js");
+      serverProcess = spawn("node", [serverPath], {
+        detached: true,
+        stdio: "ignore",
+      });
+      serverProcess.unref();
+
+      vscode.window.showInformationMessage("WaitMe 服务已启动");
+      
+      // 等待一下再检查健康状态
+      setTimeout(() => checkServerHealth(httpClient, provider), 1000);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("waitme.stopServer", async () => {
+      const result = await vscode.window.showWarningMessage(
+        "确定要停止 WaitMe 服务吗？",
+        "确定",
+        "取消"
+      );
+      if (result !== "确定") {
+        return;
+      }
+
+      try {
+        const { exec } = require("child_process");
+        const isWin = process.platform === "win32";
+        const cmd = isWin
+          ? `for /f "tokens=5" %a in ('netstat -aon ^| findstr :${HTTP_PORT}') do taskkill /F /PID %a`
+          : `lsof -ti:${HTTP_PORT} | xargs kill -9 2>/dev/null || true`;
+        
+        exec(cmd, () => {
+          serverProcess = null;
+          vscode.window.showInformationMessage("WaitMe 服务已停止");
+          checkServerHealth(httpClient, provider);
+        });
+      } catch (error) {
+        vscode.window.showErrorMessage(`停止服务失败: ${error}`);
+      }
+    })
+  );
 }
 
 async function registerToHttpServer(httpClient: HttpClient) {
@@ -171,6 +228,36 @@ async function registerToHttpServer(httpClient: HttpClient) {
   }
 }
 
+function startHealthCheck(httpClient: HttpClient, provider: WaitMeViewProvider) {
+  checkServerHealth(httpClient, provider);
+  healthCheckTimer = setInterval(() => {
+    checkServerHealth(httpClient, provider);
+  }, HEALTH_CHECK_INTERVAL);
+}
+
+async function checkServerHealth(httpClient: HttpClient, provider: WaitMeViewProvider) {
+  const health = await httpClient.checkHealth();
+  const wasOnline = isServerOnline;
+  isServerOnline = health !== null;
+
+  if (isServerOnline) {
+    if (!wasOnline) {
+      vscode.window.showInformationMessage("WaitMe 服务已连接");
+    }
+    statusBarItem.text = `$(check) WaitMe`;
+    statusBarItem.tooltip = `服务运行中 (${health!.pendingCount} 待处理)`;
+    statusBarItem.backgroundColor = undefined;
+  } else {
+    statusBarItem.text = `$(warning) WaitMe 离线`;
+    statusBarItem.tooltip = "点击启动服务";
+    statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+  }
+  statusBarItem.show();
+}
+
 export function deactivate() {
+  if (healthCheckTimer) {
+    clearInterval(healthCheckTimer);
+  }
   console.log("WaitMe extension is now deactivated");
 }

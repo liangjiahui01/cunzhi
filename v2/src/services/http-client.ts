@@ -7,6 +7,18 @@ export class HttpClient {
     this.baseUrl = `http://127.0.0.1:${port}`;
   }
 
+  async checkHealth(): Promise<{ status: string; pendingCount: number } | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/health`);
+      if (!response.ok) {
+        return null;
+      }
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
   async register(windowId: string, projectPath: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/api/register`, {
       method: "POST",

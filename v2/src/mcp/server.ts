@@ -5,14 +5,15 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { v4 as uuidv4 } from "uuid";
-import { HttpServer } from "./http-server";
+import { McpHttpClient } from "./http-client";
 import type { WaitMeRequest, WaitMeResponse } from "../types";
 
 const HTTP_PORT = 19528;
+const REQUEST_TIMEOUT_MS = 300000; // 5 minutes
 
 export class WaitMeServer {
   private server: Server;
-  private httpServer: HttpServer;
+  private httpClient: McpHttpClient;
 
   constructor() {
     this.server = new Server(
@@ -27,7 +28,7 @@ export class WaitMeServer {
       }
     );
 
-    this.httpServer = new HttpServer(HTTP_PORT);
+    this.httpClient = new McpHttpClient(HTTP_PORT);
     this.setupHandlers();
   }
 
@@ -159,7 +160,14 @@ export class WaitMeServer {
       };
 
       try {
-        const response = await this.httpServer.waitForResponse(waitmeRequest);
+        // 1. 添加请求到 HTTP Server
+        await this.httpClient.addRequest(waitmeRequest);
+        
+        // 2. 轮询等待响应
+        const response = await this.httpClient.waitForResponse(
+          waitmeRequest.requestId,
+          REQUEST_TIMEOUT_MS
+        );
         return this.buildMcpContent(response);
       } catch (error) {
         const errorMessage =
@@ -178,33 +186,20 @@ export class WaitMeServer {
   }
 
   async run() {
-    await this.httpServer.start();
+    // 检查 HTTP Server 是否可用
+    const health = await this.httpClient.checkHealth();
+    if (!health) {
+      console.error("WARNING: HTTP Server is not running on port " + HTTP_PORT);
+      console.error("Please start the server first: waitme-server");
+    } else {
+      console.error(`Connected to HTTP Server (${health.pendingCount} pending requests)`);
+    }
+
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error("WaitMe MCP Server running on stdio");
-    console.error(`HTTP Server listening on port ${HTTP_PORT}`);
+    console.error("WaitMe MCP Server running on stdio (client mode)");
 
-    // 优雅退出：等待队列为空
-    const gracefulShutdown = async () => {
-      console.error("MCP Server received shutdown signal...");
-      
-      // 检查是否有待处理的请求
-      const pendingCount = this.httpServer.getPendingCount();
-      if (pendingCount > 0) {
-        console.error(`Waiting for ${pendingCount} pending requests to complete...`);
-        // 等待最多 30 秒
-        const maxWait = 30;
-        for (let i = 0; i < maxWait; i++) {
-          await new Promise(r => setTimeout(r, 1000));
-          const remaining = this.httpServer.getPendingCount();
-          if (remaining === 0) {
-            console.error("All requests completed, exiting...");
-            break;
-          }
-          console.error(`Still waiting... ${remaining} requests remaining (${maxWait - i - 1}s left)`);
-        }
-      }
-      
+    const gracefulShutdown = () => {
       console.error("MCP Server shutting down...");
       process.exit(0);
     };
@@ -212,8 +207,6 @@ export class WaitMeServer {
     process.on("SIGINT", gracefulShutdown);
     process.on("SIGTERM", gracefulShutdown);
     process.on("SIGHUP", gracefulShutdown);
-
-    // 监听 stdin 关闭 (父进程断开)
     process.stdin.on("close", gracefulShutdown);
     process.stdin.on("end", gracefulShutdown);
   }

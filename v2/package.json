@@ -35,6 +35,14 @@
       {
         "command": "waitme.killServer",
         "title": "WaitMe: Kill Server (Force)"
+      },
+      {
+        "command": "waitme.startServer",
+        "title": "WaitMe: Start Server"
+      },
+      {
+        "command": "waitme.stopServer",
+        "title": "WaitMe: Stop Server"
       }
     ],
     "viewsContainers": {
@@ -79,10 +87,12 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run build",
-    "build": "pnpm run build:extension && pnpm run build:webview && pnpm run build:mcp",
+    "build": "pnpm run build:extension && pnpm run build:webview && pnpm run build:mcp && pnpm run build:server",
     "build:extension": "npx esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "build:webview": "cd webview && pnpm run build",
     "build:mcp": "npx esbuild src/mcp/server.ts --bundle --outfile=dist/mcp-server.js --format=cjs --platform=node",
+    "build:server": "npx esbuild src/mcp/standalone-server.ts --bundle --outfile=dist/standalone-server.js --format=cjs --platform=node",
+    "server": "node dist/standalone-server.js",
     "watch": "pnpm run build:extension -- --watch",
     "dev": "pnpm run watch",
     "package": "pnpm run build && npx @vscode/vsce package --no-dependencies --allow-missing-repository"

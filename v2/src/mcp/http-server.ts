@@ -5,8 +5,13 @@ import type {
   WaitMeRequest,
   WaitMeResponse,
   WindowRegistration,
-  PendingRequest,
 } from "../types";
+
+interface PendingRequest {
+  request: WaitMeRequest;
+  resolve: (response: WaitMeResponse) => void;
+  reject: (error: Error) => void;
+}
 
 export class HttpServer {
   private server: http.Server;
@@ -14,8 +19,7 @@ export class HttpServer {
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private registeredWindows: Map<string, WindowRegistration> = new Map();
   private requestsByProject: Map<string, WaitMeRequest[]> = new Map();
-  private proxyResponses: Map<string, WaitMeResponse> = new Map();
-  private isProxy: boolean = false;
+  private responses: Map<string, WaitMeResponse> = new Map();
 
   constructor(port: number) {
     this.port = port;
@@ -25,13 +29,7 @@ export class HttpServer {
   async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE") {
-          console.error(`Port ${this.port} is already in use, running in proxy mode`);
-          this.isProxy = true;
-          resolve();
-        } else {
-          reject(err);
-        }
+        reject(err);
       });
 
       this.server.listen(this.port, "127.0.0.1", () => {
@@ -42,100 +40,40 @@ export class HttpServer {
   }
 
   stop(): void {
-    if (!this.isProxy) {
-      this.server.close();
-      console.error("HTTP Server stopped");
-    }
+    this.server.close();
+    console.error("HTTP Server stopped");
   }
 
   getPendingCount(): number {
     return this.pendingRequests.size;
   }
 
-  async waitForResponse(request: WaitMeRequest): Promise<WaitMeResponse> {
-    if (this.isProxy) {
-      return this.proxyWaitForResponse(request);
+  addRequest(request: WaitMeRequest): void {
+    this.pendingRequests.set(request.requestId, {
+      request,
+      resolve: () => {},
+      reject: () => {},
+    });
+
+    const projectRequests =
+      this.requestsByProject.get(request.projectPath) || [];
+    projectRequests.push(request);
+    this.requestsByProject.set(request.projectPath, projectRequests);
+
+    this.notifyWindows(request);
+  }
+
+  getResponse(requestId: string): WaitMeResponse | null {
+    const response = this.responses.get(requestId);
+    if (response) {
+      this.responses.delete(requestId);
+      return response;
     }
-
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(request.requestId, {
-        request,
-        resolve,
-        reject,
-      });
-
-      const projectRequests =
-        this.requestsByProject.get(request.projectPath) || [];
-      projectRequests.push(request);
-      this.requestsByProject.set(request.projectPath, projectRequests);
-
-      this.notifyWindows(request);
-    });
+    return null;
   }
 
-  private async proxyWaitForResponse(request: WaitMeRequest): Promise<WaitMeResponse> {
-    await this.httpPost("/api/proxy/add", request);
-
-    while (true) {
-      await new Promise((r) => setTimeout(r, 500));
-      
-      const data = await this.httpGet(`/api/proxy/poll/${request.requestId}`);
-      if (data.response) {
-        return data.response;
-      }
-    }
-  }
-
-  private httpPost(path: string, body: unknown): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const data = JSON.stringify(body);
-      const req = http.request({
-        hostname: "127.0.0.1",
-        port: this.port,
-        path,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(data),
-        },
-      }, (res) => {
-        let responseData = "";
-        res.on("data", (chunk) => (responseData += chunk));
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(responseData));
-          } catch {
-            resolve({});
-          }
-        });
-      });
-      req.on("error", reject);
-      req.write(data);
-      req.end();
-    });
-  }
-
-  private httpGet(path: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const req = http.request({
-        hostname: "127.0.0.1",
-        port: this.port,
-        path,
-        method: "GET",
-      }, (res) => {
-        let responseData = "";
-        res.on("data", (chunk) => (responseData += chunk));
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(responseData));
-          } catch {
-            resolve({});
-          }
-        });
-      });
-      req.on("error", reject);
-      req.end();
-    });
+  hasPendingRequest(requestId: string): boolean {
+    return this.pendingRequests.has(requestId);
   }
 
   private notifyWindows(request: WaitMeRequest): void {
@@ -166,7 +104,9 @@ export class HttpServer {
 
     const url = new URL(req.url || "/", `http://127.0.0.1:${this.port}`);
 
-    if (req.method === "GET" && url.pathname === "/ui") {
+    if (req.method === "GET" && url.pathname === "/api/health") {
+      this.handleHealth(res);
+    } else if (req.method === "GET" && url.pathname === "/ui") {
       this.serveWebUI(res);
     } else if (req.method === "GET" && url.pathname === "/api/requests") {
       this.handleGetRequests(url, res);
@@ -178,10 +118,10 @@ export class HttpServer {
       this.handlePoll(url, res);
     } else if (req.method === "DELETE" && url.pathname.startsWith("/api/request/")) {
       this.handleDelete(url, res);
-    } else if (req.method === "POST" && url.pathname === "/api/proxy/add") {
-      this.handleProxyAdd(req, res);
-    } else if (req.method === "GET" && url.pathname.startsWith("/api/proxy/poll/")) {
-      this.handleProxyPoll(url, res);
+    } else if (req.method === "POST" && url.pathname === "/api/request") {
+      this.handleAddRequest(req, res);
+    } else if (req.method === "GET" && url.pathname.startsWith("/api/poll/")) {
+      this.handlePollById(url, res);
     } else if (req.method === "POST" && url.pathname === "/api/restart") {
       this.handleRestart(res);
     } else {
@@ -334,7 +274,7 @@ export class HttpServer {
 
         pending.resolve(response);
         this.pendingRequests.delete(data.requestId);
-        this.proxyResponses.set(data.requestId, response);
+        this.responses.set(data.requestId, response);
 
         const projectRequests =
           this.requestsByProject.get(pending.request.projectPath) || [];
@@ -364,25 +304,21 @@ export class HttpServer {
     res.end(JSON.stringify({ requests }));
   }
 
-  private handleProxyAdd(req: http.IncomingMessage, res: http.ServerResponse): void {
+  private handleHealth(res: http.ServerResponse): void {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "ok",
+      pendingCount: this.pendingRequests.size,
+    }));
+  }
+
+  private handleAddRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
       try {
         const request = JSON.parse(body) as WaitMeRequest;
-        
-        this.pendingRequests.set(request.requestId, {
-          request,
-          resolve: () => {},
-          reject: () => {},
-        });
-
-        const projectRequests = this.requestsByProject.get(request.projectPath) || [];
-        projectRequests.push(request);
-        this.requestsByProject.set(request.projectPath, projectRequests);
-
-        this.notifyWindows(request);
-
+        this.addRequest(request);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ success: true }));
       } catch (e) {
@@ -392,7 +328,7 @@ export class HttpServer {
     });
   }
 
-  private handleProxyPoll(url: URL, res: http.ServerResponse): void {
+  private handlePollById(url: URL, res: http.ServerResponse): void {
     const requestId = url.pathname.split("/").pop();
     if (!requestId) {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -400,9 +336,9 @@ export class HttpServer {
       return;
     }
 
-    const response = this.proxyResponses.get(requestId);
+    const response = this.responses.get(requestId);
     if (response) {
-      this.proxyResponses.delete(requestId);
+      this.responses.delete(requestId);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ response }));
       return;
@@ -436,7 +372,7 @@ export class HttpServer {
     }
     this.pendingRequests.clear();
     this.requestsByProject.clear();
-    this.proxyResponses.clear();
+    this.responses.clear();
     this.registeredWindows.clear();
 
     console.error("Server restarted, all pending requests cleared");
