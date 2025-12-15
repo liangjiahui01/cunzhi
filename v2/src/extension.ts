@@ -3,9 +3,7 @@ import { WaitMeViewProvider } from "./providers/webview-provider";
 import { HttpClient } from "./services/http-client";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
-
-const HTTP_PORT = 19528;
-const HEALTH_CHECK_INTERVAL = 5000; // 5 seconds
+import { HTTP_PORT, HEALTH_CHECK_INTERVAL } from "./config";
 
 let statusBarItem: vscode.StatusBarItem;
 let serverProcess: ChildProcess | null = null;
@@ -40,23 +38,15 @@ export function activate(context: vscode.ExtensionContext) {
 
   provider.onRequestCountChange = (count: number, isNew: boolean) => {
     const currentConfig = getConfig();
-    if (count > 0) {
-      statusBarItem.text = `$(bell) WaitMe (${count})`;
-      statusBarItem.tooltip = `${count} 个待处理请求`;
-      statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
-      statusBarItem.show();
-      if (isNew && currentConfig.showToast) {
-        vscode.window.showInformationMessage(
-          `WaitMe: 有 ${count} 个待处理请求`,
-          "查看"
-        ).then((action) => {
-          if (action === "查看") {
-            provider.show();
-          }
-        });
-      }
-    } else {
-      statusBarItem.hide();
+    if (isNew && count > 0 && currentConfig.showToast) {
+      vscode.window.showInformationMessage(
+        `WaitMe: 有 ${count} 个待处理请求`,
+        "查看"
+      ).then((action) => {
+        if (action === "查看") {
+          provider.show();
+        }
+      });
     }
   };
 
@@ -107,53 +97,6 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("waitme.openSettings", () => {
       provider.show();
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("waitme.restartServer", async () => {
-      const result = await vscode.window.showWarningMessage(
-        "确定要重启 WaitMe 服务吗？这将清除所有待处理的请求。",
-        "确定",
-        "取消"
-      );
-      if (result === "确定") {
-        try {
-          await httpClient.restartServer();
-          vscode.window.showInformationMessage("WaitMe 服务已重启");
-        } catch (error) {
-          vscode.window.showErrorMessage(`重启失败: ${error}`);
-        }
-      }
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("waitme.killServer", async () => {
-      const result = await vscode.window.showWarningMessage(
-        "⚠️ 确定要强制杀死 WaitMe 服务吗？这将终止占用端口 19528 的进程。",
-        "确定",
-        "取消"
-      );
-      if (result === "确定") {
-        try {
-          const { exec } = require("child_process");
-          const isWin = process.platform === "win32";
-          const cmd = isWin
-            ? `for /f "tokens=5" %a in ('netstat -aon ^| findstr :19528') do taskkill /F /PID %a`
-            : `lsof -ti:19528 | xargs kill -9 2>/dev/null || true`;
-          
-          exec(cmd, (error: Error | null) => {
-            if (error) {
-              vscode.window.showWarningMessage("没有找到运行中的服务，或已被终止");
-            } else {
-              vscode.window.showInformationMessage("WaitMe 服务已被强制终止");
-            }
-          });
-        } catch (error) {
-          vscode.window.showErrorMessage(`终止失败: ${error}`);
-        }
-      }
     })
   );
 
@@ -244,9 +187,16 @@ async function checkServerHealth(httpClient: HttpClient, provider: WaitMeViewPro
     if (!wasOnline) {
       vscode.window.showInformationMessage("WaitMe 服务已连接");
     }
-    statusBarItem.text = `$(check) WaitMe`;
-    statusBarItem.tooltip = `服务运行中 (${health!.pendingCount} 待处理)`;
-    statusBarItem.backgroundColor = undefined;
+    const count = health!.pendingCount;
+    if (count > 0) {
+      statusBarItem.text = `$(bell) WaitMe (${count})`;
+      statusBarItem.tooltip = `${count} 个待处理请求`;
+      statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+    } else {
+      statusBarItem.text = `$(check) WaitMe`;
+      statusBarItem.tooltip = `服务运行中`;
+      statusBarItem.backgroundColor = undefined;
+    }
   } else {
     statusBarItem.text = `$(warning) WaitMe 离线`;
     statusBarItem.tooltip = "点击启动服务";

@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { HttpClient } from "../services/http-client";
 import type { WaitMeRequest } from "../types";
 import type { WaitMeConfig } from "../extension";
+import { WEBVIEW_POLL_INTERVAL } from "../config";
 
 export class WaitMeViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "waitme.mainView";
@@ -102,7 +103,7 @@ export class WaitMeViewProvider implements vscode.WebviewViewProvider {
   private _startPolling() {
     this._pollInterval = setInterval(() => {
       this._fetchAndSendRequests();
-    }, 1000);
+    }, WEBVIEW_POLL_INTERVAL);
   }
 
   private _stopPolling() {

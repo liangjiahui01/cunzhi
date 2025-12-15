@@ -7,9 +7,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { McpHttpClient } from "./http-client";
 import type { WaitMeRequest, WaitMeResponse } from "../types";
-
-const HTTP_PORT = 19528;
-const REQUEST_TIMEOUT_MS = 300000; // 5 minutes
+import { HTTP_PORT, REQUEST_TIMEOUT_MS } from "../config";
 
 export class WaitMeServer {
   private server: Server;

@@ -1,7 +1,6 @@
 import * as http from "http";
 import type { WaitMeRequest, WaitMeResponse } from "../types";
-
-const HTTP_PORT = 19528;
+import { HTTP_PORT, REQUEST_TIMEOUT_MS } from "../config";
 
 export class McpHttpClient {
   private port: number;
@@ -23,7 +22,7 @@ export class McpHttpClient {
     await this.httpPost("/api/request", request);
   }
 
-  async waitForResponse(requestId: string, timeoutMs: number = 300000): Promise<WaitMeResponse> {
+  async waitForResponse(requestId: string, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<WaitMeResponse> {
     const startTime = Date.now();
     
     while (Date.now() - startTime < timeoutMs) {

@@ -41,7 +41,7 @@ const INITIAL_CONTEXT_RULES: ContextRule[] = [
   { id: "no_run", label: "不要运行，用户自己运行", enabled: true, content: "❌请记住，不要运行，用户自己运行" },
 ];
 
-type TabType = "current" | "history";
+type TabType = "current" | "all" | "history";
 
 function App() {
   const [requests, setRequests] = useState<WaitMeRequest[]>([]);
@@ -49,15 +49,17 @@ function App() {
   const [contextRules, setContextRules] = useState<ContextRule[]>(() => loadState("contextRules", INITIAL_CONTEXT_RULES));
   const [activeTab, setActiveTab] = useState<TabType>("current");
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
-  const [projectFilter, setProjectFilter] = useState<string>("current");
   const [currentProjectPath, setCurrentProjectPath] = useState<string>("");
   const [config, setConfig] = useState<WaitMeConfig>({ theme: "system", showToast: true });
 
   const filteredRequests = useMemo(() => {
-    if (projectFilter === "all") return requests;
-    if (!currentProjectPath) return requests;
-    return requests.filter((r) => r.projectPath === currentProjectPath);
-  }, [requests, projectFilter, currentProjectPath]);
+    if (activeTab === "all") return requests;
+    if (activeTab === "current") {
+      if (!currentProjectPath) return requests;
+      return requests.filter((r) => r.projectPath === currentProjectPath);
+    }
+    return [];
+  }, [requests, activeTab, currentProjectPath]);
 
   useEffect(() => {
     saveState("history", history);
@@ -138,7 +140,9 @@ function App() {
   }, []);
 
   const clearHistory = useCallback(() => {
-    setHistory([]);
+    if (window.confirm("确定要清空所有历史记录吗？此操作不可撤销。")) {
+      setHistory([]);
+    }
   }, []);
 
   const deleteHistoryItems = useCallback((ids: string[]) => {
@@ -156,65 +160,57 @@ function App() {
     document.documentElement.setAttribute("data-theme", effectiveTheme);
   }, [effectiveTheme]);
 
+  const currentProjectCount = currentProjectPath ? requests.filter((r) => r.projectPath === currentProjectPath).length : 0;
+
   return (
-    <div className={`flex flex-col h-screen theme-${effectiveTheme}`}>
-      <div className="border-b border-vscode-border">
-        <div className="flex items-center gap-1 p-2">
+    <div className={`flex h-full overflow-hidden theme-${effectiveTheme}`}>
+      {/* 左侧 tabs */}
+      <div className="flex flex-col w-12 shrink-0 border-r border-vscode-border bg-vscode-bg">
+        <button
+          onClick={() => setActiveTab("current")}
+          title="当前项目"
+          className={`px-2 py-3 text-sm text-center transition-colors border-b border-vscode-border ${
+            activeTab === "current"
+              ? "bg-vscode-button text-vscode-buttonFg"
+              : "hover:bg-vscode-secondary"
+          }`}
+        >
+          📁<br/><span className="text-xs">{currentProjectCount}</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("all")}
+          title="全部项目"
+          className={`px-2 py-3 text-sm text-center transition-colors border-b border-vscode-border ${
+            activeTab === "all"
+              ? "bg-vscode-button text-vscode-buttonFg"
+              : "hover:bg-vscode-secondary"
+          }`}
+        >
+          📋<br/><span className="text-xs">{requests.length}</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("history")}
+          title="历史记录"
+          className={`px-2 py-3 text-sm text-center transition-colors border-b border-vscode-border ${
+            activeTab === "history"
+              ? "bg-vscode-button text-vscode-buttonFg"
+              : "hover:bg-vscode-secondary"
+          }`}
+        >
+          🕐<br/><span className="text-xs">{history.length}</span>
+        </button>
+        {activeTab === "history" && history.length > 0 && (
           <button
-            onClick={() => setActiveTab("current")}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              activeTab === "current"
-                ? "bg-vscode-button text-vscode-buttonFg"
-                : "hover:bg-vscode-secondary"
-            }`}
+            onClick={clearHistory}
+            title="清空历史"
+            className="px-2 py-3 text-sm text-center text-red-400 hover:text-red-300 border-b border-vscode-border"
           >
-            当前 ({requests.length})
+            🗑️
           </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              activeTab === "history"
-                ? "bg-vscode-button text-vscode-buttonFg"
-                : "hover:bg-vscode-secondary"
-            }`}
-          >
-            历史 ({history.length})
-          </button>
-          {activeTab === "history" && history.length > 0 && (
-            <button
-              onClick={clearHistory}
-              className="ml-auto px-2 py-1 text-xs text-red-400 hover:text-red-300"
-            >
-              清空
-            </button>
-          )}
-        </div>
-        {activeTab === "current" && (
-          <div className="flex items-center gap-1 px-2 pb-2">
-            <button
-              onClick={() => setProjectFilter("current")}
-              className={`px-2 py-0.5 text-xs rounded whitespace-nowrap transition-colors ${
-                projectFilter === "current"
-                  ? "bg-blue-600 text-white"
-                  : "bg-vscode-input text-vscode-fg hover:opacity-80"
-              }`}
-            >
-              当前项目 ({currentProjectPath ? requests.filter((r) => r.projectPath === currentProjectPath).length : 0})
-            </button>
-            <button
-              onClick={() => setProjectFilter("all")}
-              className={`px-2 py-0.5 text-xs rounded whitespace-nowrap transition-colors ${
-                projectFilter === "all"
-                  ? "bg-blue-600 text-white"
-                  : "bg-vscode-input text-vscode-fg hover:opacity-80"
-              }`}
-            >
-              全部项目 ({requests.length})
-            </button>
-          </div>
         )}
       </div>
 
+      {/* 右侧内容区 */}
       <div className="flex-1 overflow-y-auto p-3">
         {activeTab === "history" ? (
           <HistoryList history={history} onItemClick={setSelectedItem} onDeleteItems={deleteHistoryItems} />

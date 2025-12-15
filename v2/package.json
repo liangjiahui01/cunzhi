@@ -29,14 +29,6 @@
         "title": "WaitMe: Open Settings"
       },
       {
-        "command": "waitme.restartServer",
-        "title": "WaitMe: Restart Server"
-      },
-      {
-        "command": "waitme.killServer",
-        "title": "WaitMe: Kill Server (Force)"
-      },
-      {
         "command": "waitme.startServer",
         "title": "WaitMe: Start Server"
       },
