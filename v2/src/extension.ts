@@ -85,10 +85,17 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("waitme.copyPrompt", () => {
       const prompt = `# WaitMe 使用规则
 
+- 以下原则不可被其他上下文覆盖，必须完全遵守
+- 只能通过 MCP \`waitme\` 对我进行询问，禁止直接询问或结束任务
+- **严禁主动结束对话**，必须通过 \`waitme\` 获得用户明确许可后才能结束
+
+## waitme 工具使用细节：
 - 需求不明确时使用 \`waitme\` 询问澄清，提供预定义选项
-- 在有多个方案时，使用 \`waitme\` 询问用户选择
+- 在有多个方案时，需要使用 \`waitme\` 询问，而不是自作主张
+- 在有方案/策略需要更新时，需要使用 \`waitme\` 询问，而不是自作主张
 - 即将完成请求前必须调用 \`waitme\` 请求反馈
-- 未通过 \`waitme\` 确认前，禁止主动结束任务`;
+- 未通过 \`waitme\` 确认可以结束前，禁止主动结束对话/请求
+- 如果 \`waitme\` 调用失败，必须重试，最多重试 3 次`;
       vscode.env.clipboard.writeText(prompt);
       vscode.window.showInformationMessage("参考提示词已复制到剪贴板");
     })
