@@ -52,6 +52,7 @@ function App() {
   const [requests, setRequests] = useState<WaitMeRequest[]>([]);
   const [history, setHistory] = useState<WaitMeRequest[]>(() => loadState("history", []));
   const [contextRules, setContextRules] = useState<ContextRule[]>(() => loadState("contextRules", INITIAL_CONTEXT_RULES));
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set(loadState<string[]>("collapsedIds", [])));
   const [activeTab, setActiveTab] = useState<TabType>("current");
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>("");
@@ -79,6 +80,10 @@ function App() {
   useEffect(() => {
     saveState("contextRules", contextRules);
   }, [contextRules]);
+
+  useEffect(() => {
+    saveState("collapsedIds", Array.from(collapsedIds));
+  }, [collapsedIds]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -161,6 +166,18 @@ function App() {
     setHistory((prev) => prev.filter((h) => !ids.includes(h.requestId)));
   }, []);
 
+  const toggleCollapse = useCallback((requestId: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(requestId)) {
+        next.delete(requestId);
+      } else {
+        next.add(requestId);
+      }
+      return next;
+    });
+  }, []);
+
   // Detect VSCode theme
   const [vsCodeTheme, setVsCodeTheme] = useState<"dark" | "light">(() => {
     const body = document.body;
@@ -221,7 +238,7 @@ function App() {
             title="当前项目"
             className={cn(
               "flex flex-col items-center justify-center h-auto py-2 px-1 gap-0.5",
-              activeTab === "current" && "bg-primary/90 shadow-lg"
+              activeTab === "current" && "bg-slate-200 dark:bg-primary/90 shadow-lg"
             )}
           >
             <span className="text-base">📁</span>
@@ -237,7 +254,7 @@ function App() {
             title="全部项目"
             className={cn(
               "flex flex-col items-center justify-center h-auto py-2 px-1 gap-0.5",
-              activeTab === "all" && "bg-primary/90 shadow-lg"
+              activeTab === "all" && "bg-slate-200 dark:bg-primary/90 shadow-lg"
             )}
           >
             <span className="text-base">📋</span>
@@ -253,7 +270,7 @@ function App() {
             title="历史记录"
             className={cn(
               "flex flex-col items-center justify-center h-auto py-2 px-1 gap-0.5",
-              activeTab === "history" && "bg-primary/90 shadow-lg"
+              activeTab === "history" && "bg-slate-200 dark:bg-primary/90 shadow-lg"
             )}
           >
             <span className="text-base">🕐</span>
@@ -328,6 +345,8 @@ function App() {
                     onDelete={handleDelete}
                     contextRules={contextRules}
                     onToggleContextRule={toggleContextRule}
+                    collapsed={collapsedIds.has(request.requestId)}
+                    onToggleCollapse={toggleCollapse}
                   />
                 </div>
               ))}

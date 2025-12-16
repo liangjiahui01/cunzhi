@@ -35,6 +35,8 @@ interface Props {
   onDelete: (requestId: string) => void;
   contextRules: ContextRule[];
   onToggleContextRule: (id: string) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: (requestId: string) => void;
 }
 
 export function RequestCard({
@@ -43,6 +45,8 @@ export function RequestCard({
   onDelete,
   contextRules,
   onToggleContextRule,
+  collapsed = false,
+  onToggleCollapse,
 }: Props) {
   const [userInput, setUserInput] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -152,11 +156,26 @@ export function RequestCard({
       <CardHeader className="pb-2 pt-3 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0 flex-1">
+            {onToggleCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onToggleCollapse(request.requestId)}
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+              >
+                {collapsed ? "▶" : "▼"}
+              </Button>
+            )}
             <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={request.projectPath}>
               {request.projectPath.split('/').pop()}
             </span>
             <span className="text-[10px] text-muted-foreground">#{request.requestId.slice(0, 8)}</span>
             <span className="text-[10px] text-muted-foreground">{new Date(request.timestamp).toLocaleTimeString()}</span>
+            {collapsed && (
+              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                {request.message.replace(/[#*`\n]/g, " ").slice(0, 50)}...
+              </span>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -169,7 +188,7 @@ export function RequestCard({
         </div>
       </CardHeader>
 
-      <CardContent className="px-4 pb-4">
+      {!collapsed && <CardContent className="px-4 pb-4">
         {showDeleteConfirm && (
           <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg backdrop-blur-sm">
             <p className="text-sm mb-3 text-destructive">⚠️ 确定要删除此请求吗？MCP 客户端将收到空响应。</p>
@@ -341,7 +360,6 @@ export function RequestCard({
             />
           </div>
         </div>
-      </CardContent>
 
       {/* Context rules - always visible */}
       <div className="border-t border-border/50 px-4 py-3 bg-muted/20">
@@ -367,6 +385,7 @@ export function RequestCard({
           ))}
         </div>
       </div>
+      </CardContent>}
     </Card>
   );
 }
