@@ -145,8 +145,8 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("waitme.quickOpen", async () => {
       const items = [
-        { label: "$(sidebar-left) 在侧边栏打开", action: "sidebar" },
         { label: "$(window) 在编辑器中打开", action: "panel" },
+        { label: "$(sidebar-left) 在侧边栏打开", action: "sidebar" },
       ];
       const selected = await vscode.window.showQuickPick(items, {
         placeHolder: "选择打开方式",

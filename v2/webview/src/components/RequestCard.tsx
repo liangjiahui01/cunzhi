@@ -48,7 +48,6 @@ export function RequestCard({
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showContextRules, setShowContextRules] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -332,20 +331,6 @@ export function RequestCard({
               <TooltipContent>上传图片</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={showContextRules ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setShowContextRules(!showContextRules)}
-                  className={cn(!showContextRules && "glass-button")}
-                >
-                  ⚙
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>上下文规则</TooltipContent>
-            </Tooltip>
-
             <input
               ref={fileInputRef}
               type="file"
@@ -358,33 +343,30 @@ export function RequestCard({
         </div>
       </CardContent>
 
-      {/* Context rules panel */}
-      {showContextRules && (
-        <div className="border-t border-border/50 p-4 bg-muted/30 backdrop-blur-sm">
-          <p className="text-xs text-muted-foreground mb-3">上下文规则 (自动追加到回复)</p>
-          <div className="space-y-1">
-            {contextRules.map((rule) => (
-              <label
-                key={rule.id}
-                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={rule.enabled}
-                  onChange={() => onToggleContextRule(rule.id)}
-                  className="rounded border-muted-foreground/40"
-                />
-                <span className={cn(
-                  "transition-opacity",
-                  rule.enabled ? "opacity-100" : "opacity-50"
-                )}>
-                  {rule.label}
-                </span>
-              </label>
-            ))}
-          </div>
+      {/* Context rules - always visible */}
+      <div className="border-t border-border/50 px-4 py-3 bg-muted/20">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {contextRules.map((rule) => (
+            <label
+              key={rule.id}
+              className="flex items-center gap-1.5 text-[11px] cursor-pointer hover:text-foreground transition-colors"
+            >
+              <input
+                type="checkbox"
+                checked={rule.enabled}
+                onChange={() => onToggleContextRule(rule.id)}
+                className="w-3 h-3 rounded border-muted-foreground/40"
+              />
+              <span className={cn(
+                "transition-opacity",
+                rule.enabled ? "opacity-100 text-foreground" : "opacity-50"
+              )}>
+                {rule.label}
+              </span>
+            </label>
+          ))}
         </div>
-      )}
+      </div>
     </Card>
   );
 }
