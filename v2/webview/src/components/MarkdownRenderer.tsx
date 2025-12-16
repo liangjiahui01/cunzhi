@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -8,10 +9,18 @@ import "katex/dist/katex.min.css";
 
 interface Props {
   content: string;
-  isDark?: boolean;
 }
 
-export function MarkdownRenderer({ content, isDark = true }: Props) {
+export function MarkdownRenderer({ content }: Props) {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
@@ -38,6 +47,7 @@ export function MarkdownRenderer({ content, isDark = true }: Props) {
                 margin: "0.5em 0",
                 borderRadius: "0.375rem",
                 fontSize: "13px",
+                backgroundColor: isDark ? "#282c34" : "#fafafa",
               }}
             >
               {String(children).replace(/\n$/, "")}
