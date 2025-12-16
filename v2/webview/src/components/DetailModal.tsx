@@ -1,6 +1,9 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { WaitMeRequest } from "../types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Props {
   item: WaitMeRequest;
@@ -10,92 +13,93 @@ interface Props {
 export function DetailModal({ item, onClose }: Props) {
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
-      <div
-        className="bg-vscode-bg border border-vscode-border rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+      <Card
+        className="glass-card max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-3 border-b border-vscode-border">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="font-normal">
               {item.projectPath.split("/").pop()}
-            </span>
-            <span className="text-xs text-vscode-fg opacity-50">
+            </Badge>
+            <span className="text-xs text-muted-foreground">
               {new Date(item.timestamp).toLocaleString()}
             </span>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-vscode-secondary text-lg"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
           >
             ×
-          </button>
+          </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="prose prose-sm prose-invert max-w-none mb-4">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {item.message}
-            </ReactMarkdown>
-          </div>
-
-          {item.predefinedOptions && item.predefinedOptions.length > 0 && (
-            <div className="mb-4">
-              <div className="text-xs text-vscode-fg opacity-50 mb-2">预定义选项:</div>
-              <div className="flex flex-wrap gap-2">
-                {item.predefinedOptions.map((opt, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 text-xs rounded bg-vscode-secondary"
-                  >
-                    {opt}
-                  </span>
-                ))}
-              </div>
+        {/* Content */}
+        <ScrollArea className="flex-1">
+          <div className="p-4">
+            {/* Message */}
+            <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
+              <MarkdownRenderer content={item.message} />
             </div>
-          )}
 
-          {item.response && (
-            <div className="border-t border-vscode-border pt-4 mt-4">
-              <div className="text-xs text-vscode-fg opacity-50 mb-2">回复:</div>
-              
-              {item.response.selectedOptions && item.response.selectedOptions.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {item.response.selectedOptions.map((opt, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-1 text-xs rounded bg-vscode-button text-vscode-buttonFg"
-                    >
+            {/* Predefined options */}
+            {item.predefinedOptions && item.predefinedOptions.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-muted-foreground mb-2">预定义选项:</p>
+                <div className="flex flex-wrap gap-2">
+                  {item.predefinedOptions.map((opt, i) => (
+                    <Badge key={i} variant="secondary" className="font-normal">
                       {opt}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              {item.response.userInput && (
-                <div className="bg-vscode-input p-3 rounded text-sm whitespace-pre-wrap">
-                  {item.response.userInput}
-                </div>
-              )}
+            {/* Response section */}
+            {item.response && (
+              <div className="border-t border-border/50 pt-4 mt-4">
+                <p className="text-xs text-muted-foreground mb-3">回复:</p>
+                
+                {item.response.selectedOptions && item.response.selectedOptions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {item.response.selectedOptions.map((opt, i) => (
+                      <Badge key={i} className="font-normal">
+                        {opt}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
-              {item.response.images && item.response.images.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {item.response.images.map((img, i) => (
-                    <img
-                      key={i}
-                      src={img.data}
-                      alt=""
-                      className="max-h-32 rounded border border-vscode-border"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                {item.response.userInput && (
+                  <div className="bg-muted/50 backdrop-blur-sm p-3 rounded-lg text-sm whitespace-pre-wrap border border-border/30">
+                    {item.response.userInput}
+                  </div>
+                )}
+
+                {item.response.images && item.response.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {item.response.images.map((img, i) => (
+                      <img
+                        key={i}
+                        src={img.data}
+                        alt=""
+                        className="max-h-32 rounded-lg border border-border shadow-sm"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </Card>
     </div>
   );
 }

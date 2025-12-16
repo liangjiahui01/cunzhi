@@ -1,16 +1,27 @@
 import { useState, useCallback, useRef } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { clsx } from "clsx";
 import type { WaitMeRequest, ImageAttachment, ContextRule } from "../types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 const QUICK_TEMPLATES = [
-  { id: "done", label: "✓ Done", content: "完成" },
-  { id: "clear", label: "✗ Clear", content: "清除" },
-  { id: "issue", label: "★ Issue", content: "新问题" },
-  { id: "remember", label: "◉ Remember", content: "记住" },
-  { id: "summary", label: "◎ Summary", content: "总结" },
-  { id: "review", label: "◉ Review", content: "审查" },
+  { id: "done", label: "✓ Done", content: "完成", tooltip: "标记任务已完成，AI 将停止当前任务" },
+  { id: "clear", label: "✗ Clear", content: "清除", tooltip: "清除当前内容，重新开始" },
+  { id: "issue", label: "★ Issue", content: "新问题", tooltip: "提出新问题或发现问题" },
+  { id: "remember", label: "◉ Remember", content: "记住", tooltip: "让 AI 记住重要信息到 Memory" },
+  { id: "summary", label: "◎ Summary", content: "总结", tooltip: "让 AI 总结当前对话或代码" },
+  { id: "review", label: "◉ Review", content: "审查", tooltip: "让 AI 审查代码或方案" },
+  { id: "architect", label: "🏛️ Architect", content: "架构师视角", tooltip: "从架构层面思考，关注系统设计、模块拆分、技术选型" },
+  { id: "debugger", label: "🔍 Debugger", content: "调试模式", tooltip: "专注问题定位，分析日志、堆栈、状态变化" },
+  { id: "mentor", label: "👨‍🏫 Mentor", content: "导师模式", tooltip: "解释原理、循序渐进指导、提供学习建议" },
+  { id: "security", label: "🛡️ Security", content: "安全审查", tooltip: "关注安全漏洞、权限控制、数据保护" },
 ];
 
 interface Props {
@@ -134,79 +145,87 @@ export function RequestCard({
   }, []);
 
   return (
-    <div
-      className="rounded-lg border border-vscode-border bg-vscode-bg"
+    <Card
+      className="glass-card overflow-hidden transition-all duration-300 hover:shadow-2xl"
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
-      <div className="p-4">
-        <div className="flex items-center justify-between text-xs text-vscode-fg opacity-50 mb-2">
+      <CardHeader className="pb-2 pt-3 px-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <span className="truncate" title={request.projectPath}>{request.projectPath}</span>
-            <span className="opacity-60 shrink-0">#{request.requestId.slice(0, 8)}</span>
-            <span className="opacity-60 shrink-0">{new Date(request.timestamp).toLocaleTimeString()}</span>
+            <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={request.projectPath}>
+              {request.projectPath.split('/').pop()}
+            </span>
+            <span className="text-[10px] text-muted-foreground">#{request.requestId.slice(0, 8)}</span>
+            <span className="text-[10px] text-muted-foreground">{new Date(request.timestamp).toLocaleTimeString()}</span>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowDeleteConfirm(true)}
-            className="text-red-400 hover:text-red-300 px-1"
-            title="删除请求"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
           >
             ✕
-          </button>
+          </Button>
         </div>
+      </CardHeader>
 
+      <CardContent className="px-4 pb-4">
         {showDeleteConfirm && (
-          <div className="mb-3 p-3 bg-red-950 border border-red-600 rounded-md">
-            <p className="text-red-100 text-sm mb-3">⚠️ 确定要删除此请求吗？MCP 客户端将收到空响应。</p>
+          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg backdrop-blur-sm">
+            <p className="text-sm mb-3 text-destructive">⚠️ 确定要删除此请求吗？MCP 客户端将收到空响应。</p>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => {
                   onDelete(request.requestId);
                   setShowDeleteConfirm(false);
                 }}
-                className="px-4 py-1.5 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-500"
               >
                 确认删除
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-1.5 bg-vscode-input text-vscode-fg rounded-md text-sm hover:opacity-80"
               >
                 取消
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
-        <div className="prose prose-sm prose-invert max-w-none mb-4">
+        {/* Message content */}
+        <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
           {request.isMarkdown !== false ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {request.message}
-            </ReactMarkdown>
+            <MarkdownRenderer content={request.message} />
           ) : (
             <p className="whitespace-pre-wrap">{request.message}</p>
           )}
         </div>
 
+        {/* Predefined options */}
         {request.predefinedOptions && request.predefinedOptions.length > 0 && (
           <div className="mb-4">
-            <div className="text-xs text-vscode-fg opacity-60 mb-2">选择选项 (可多选):</div>
+            <p className="text-xs text-muted-foreground mb-2">选择选项 (可多选):</p>
             <div className="space-y-1.5">
               {request.predefinedOptions.map((option) => (
                 <label
                   key={option}
-                  className={clsx(
-                    "flex items-center gap-3 px-3 py-2 rounded text-sm cursor-pointer transition-all",
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm cursor-pointer transition-all",
+                    "border border-transparent",
                     selectedOptions.includes(option)
-                      ? "text-blue-400"
-                      : "text-vscode-fg hover:text-blue-300"
+                      ? "bg-primary/10 border-primary/30 text-primary"
+                      : "hover:bg-muted/50"
                   )}
                 >
-                  <span className={clsx(
-                    "w-4 h-4 rounded border-2 flex items-center justify-center text-xs flex-shrink-0",
+                  <span className={cn(
+                    "w-4 h-4 rounded border-2 flex items-center justify-center text-xs flex-shrink-0 transition-all",
                     selectedOptions.includes(option)
-                      ? "bg-blue-500 border-blue-500 text-white"
-                      : "border-gray-500"
+                      ? "bg-primary border-primary text-primary-foreground"
+                      : "border-muted-foreground/40"
                   )}>
                     {selectedOptions.includes(option) && "✓"}
                   </span>
@@ -230,32 +249,37 @@ export function RequestCard({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-1.5 mb-3">
+        {/* Quick templates */}
+        <div className="flex flex-wrap gap-1.5 mb-4">
           {QUICK_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.id}
-              onClick={() => handleQuickTemplate(tpl.content)}
-              disabled={isSubmitting}
-              className={clsx(
-                "px-2 py-1 text-xs rounded transition-colors",
-                "bg-vscode-input text-vscode-fg",
-                "hover:opacity-80",
-                "disabled:opacity-50"
-              )}
-            >
-              {tpl.label}
-            </button>
+            <Tooltip key={tpl.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickTemplate(tpl.content)}
+                  disabled={isSubmitting}
+                  className="h-7 text-xs glass-button"
+                >
+                  {tpl.label}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[200px]">
+                <p className="text-xs">{tpl.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
 
+        {/* Uploaded images */}
         {images.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-4">
             {images.map((img, index) => (
               <div key={index} className="relative group">
                 <img
                   src={img.data.startsWith("data:") ? img.data : `data:${img.media_type};base64,${img.data}`}
                   alt={img.filename || "uploaded"}
-                  className="h-16 w-16 object-cover rounded border border-vscode-border"
+                  className="h-16 w-16 object-cover rounded-lg border border-border shadow-sm"
                   onError={(e) => {
                     console.error("Image load error:", img.filename);
                     e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect fill='%23333' width='64' height='64'/%3E%3Ctext x='32' y='32' text-anchor='middle' fill='%23888'%3E?%3C/text%3E%3C/svg%3E";
@@ -263,7 +287,7 @@ export function RequestCard({
                 />
                 <button
                   onClick={() => removeImage(index)}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-md"
                 >
                   ×
                 </button>
@@ -272,62 +296,55 @@ export function RequestCard({
           </div>
         )}
 
-        <div className="space-y-2">
-          <textarea
+        {/* Input area */}
+        <div className="space-y-3">
+          <Textarea
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             onPaste={handlePaste}
             placeholder="输入回复... (可粘贴/拖拽图片)"
             disabled={isSubmitting}
-            className={clsx(
-              "w-full px-3 py-2 rounded resize-y",
-              "bg-vscode-input text-vscode-inputFg border border-vscode-inputBorder",
-              "focus:outline-none focus:ring-1 focus:ring-vscode-button",
-              "disabled:opacity-50",
-              "min-h-[100px] max-h-[300px]"
-            )}
+            className="min-h-[100px] max-h-[300px] resize-y bg-background/50 backdrop-blur-sm"
             rows={4}
           />
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={handleSubmit}
               disabled={isSubmitting || (!userInput && selectedOptions.length === 0 && images.length === 0)}
-              className={clsx(
-                "flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all",
-                "bg-green-600 text-white",
-                "hover:bg-green-500 hover:shadow-md",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
-              )}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg hover:shadow-xl transition-all"
             >
               发送{selectedOptions.length > 0 && ` (${selectedOptions.length})`}
-            </button>
+            </Button>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isSubmitting}
-              className={clsx(
-                "px-3 py-2 rounded text-sm transition-colors",
-                "border border-vscode-border",
-                "hover:bg-vscode-secondary",
-                "disabled:opacity-50"
-              )}
-              title="上传图片"
-            >
-              📎
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isSubmitting}
+                  className="glass-button"
+                >
+                  📎
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>上传图片</TooltipContent>
+            </Tooltip>
 
-            <button
-              onClick={() => setShowContextRules(!showContextRules)}
-              className={clsx(
-                "px-3 py-2 rounded text-sm transition-colors",
-                "border border-vscode-border",
-                showContextRules ? "bg-vscode-button text-vscode-buttonFg" : "hover:bg-vscode-secondary"
-              )}
-              title="上下文规则"
-            >
-              ⚙
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={showContextRules ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => setShowContextRules(!showContextRules)}
+                  className={cn(!showContextRules && "glass-button")}
+                >
+                  ⚙
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>上下文规则</TooltipContent>
+            </Tooltip>
 
             <input
               ref={fileInputRef}
@@ -339,24 +356,28 @@ export function RequestCard({
             />
           </div>
         </div>
-      </div>
+      </CardContent>
 
+      {/* Context rules panel */}
       {showContextRules && (
-        <div className="border-t border-vscode-border p-3 bg-vscode-input bg-opacity-30">
-          <div className="text-xs text-vscode-fg opacity-70 mb-2">上下文规则 (自动追加到回复)</div>
+        <div className="border-t border-border/50 p-4 bg-muted/30 backdrop-blur-sm">
+          <p className="text-xs text-muted-foreground mb-3">上下文规则 (自动追加到回复)</p>
           <div className="space-y-1">
             {contextRules.map((rule) => (
               <label
                 key={rule.id}
-                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-vscode-secondary hover:bg-opacity-30 p-1 rounded"
+                className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 p-2 rounded-md transition-colors"
               >
                 <input
                   type="checkbox"
                   checked={rule.enabled}
                   onChange={() => onToggleContextRule(rule.id)}
-                  className="rounded"
+                  className="rounded border-muted-foreground/40"
                 />
-                <span className={rule.enabled ? "text-vscode-fg" : "text-vscode-fg opacity-50"}>
+                <span className={cn(
+                  "transition-opacity",
+                  rule.enabled ? "opacity-100" : "opacity-50"
+                )}>
                   {rule.label}
                 </span>
               </label>
@@ -364,7 +385,7 @@ export function RequestCard({
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 

@@ -1,5 +1,9 @@
 import { useState, useCallback } from "react";
 import type { WaitMeRequest } from "../types";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface Props {
   history: WaitMeRequest[];
@@ -43,59 +47,52 @@ export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
 
   if (history.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-vscode-fg opacity-50">
-        <p>暂无历史记录</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] text-muted-foreground">
+        <div className="text-4xl mb-4 opacity-30">🕐</div>
+        <p className="text-sm">暂无历史记录</p>
+        <p className="text-xs mt-1 opacity-60">完成的请求将显示在这里</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {onDeleteItems && (
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-3">
           {isSelecting ? (
             <>
-              <button
-                onClick={selectAll}
-                className="px-2 py-1 text-xs rounded bg-vscode-input text-vscode-fg hover:opacity-80"
-              >
+              <Button variant="outline" size="sm" onClick={selectAll} className="h-7 text-xs">
                 全选
-              </button>
-              <button
-                onClick={clearSelection}
-                className="px-2 py-1 text-xs rounded bg-vscode-input text-vscode-fg hover:opacity-80"
-              >
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearSelection} className="h-7 text-xs">
                 取消
-              </button>
+              </Button>
               {selectedIds.size > 0 && (
-                <button
-                  onClick={handleDelete}
-                  className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500"
-                >
+                <Button variant="destructive" size="sm" onClick={handleDelete} className="h-7 text-xs">
                   删除 ({selectedIds.size})
-                </button>
+                </Button>
               )}
             </>
           ) : (
-            <button
-              onClick={() => setIsSelecting(true)}
-              className="px-2 py-1 text-xs rounded bg-vscode-input text-vscode-fg hover:opacity-80"
-            >
+            <Button variant="outline" size="sm" onClick={() => setIsSelecting(true)} className="h-7 text-xs glass-button">
               选择
-            </button>
+            </Button>
           )}
         </div>
       )}
 
-      {history.map((item) => (
-        <div
+      {history.map((item, index) => (
+        <Card
           key={item.requestId}
           onClick={() => !isSelecting && onItemClick(item)}
-          className={`rounded-lg border bg-vscode-bg p-3 cursor-pointer hover:border-vscode-button transition-colors ${
-            selectedIds.has(item.requestId) ? "border-blue-500" : "border-vscode-border"
-          }`}
+          className={cn(
+            "p-3 cursor-pointer transition-all duration-200 animate-fade-in-up",
+            "glass-card hover:shadow-xl",
+            selectedIds.has(item.requestId) && "ring-2 ring-primary"
+          )}
+          style={{ animationDelay: `${index * 30}ms` }}
         >
-          <div className="flex items-center justify-between text-xs text-vscode-fg opacity-50 mb-1">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
             <div className="flex items-center gap-2">
               {isSelecting && (
                 <input
@@ -103,37 +100,39 @@ export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
                   checked={selectedIds.has(item.requestId)}
                   onChange={(e) => toggleSelect(item.requestId, e as unknown as React.MouseEvent)}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-4 h-4 rounded"
+                  className="w-4 h-4 rounded border-muted-foreground/40"
                 />
               )}
-              <span>{item.projectPath.split("/").pop()}</span>
+              <Badge variant="outline" className="text-[10px] font-normal">
+                {item.projectPath.split("/").pop()}
+              </Badge>
             </div>
             <span>{new Date(item.timestamp).toLocaleString()}</span>
           </div>
 
-          <p className="text-sm text-vscode-fg line-clamp-2 mb-2">
+          <p className="text-sm line-clamp-2 mb-2">
             {item.message.replace(/[#*`]/g, "").slice(0, 100)}
             {item.message.length > 100 && "..."}
           </p>
 
           {item.response && (
-            <div className="flex items-center gap-2 text-xs text-vscode-fg opacity-60">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {item.response.selectedOptions && item.response.selectedOptions.length > 0 && (
-                <span className="px-1.5 py-0.5 rounded bg-vscode-button text-vscode-buttonFg">
+                <Badge variant="secondary" className="text-[10px]">
                   {item.response.selectedOptions[0]}
-                </span>
+                </Badge>
               )}
               {item.response.userInput && (
-                <span className="truncate max-w-[150px]">
+                <span className="truncate max-w-[150px] opacity-70">
                   {item.response.userInput.split("\n")[0]}
                 </span>
               )}
               {item.response.images && item.response.images.length > 0 && (
-                <span>📷 {item.response.images.length}</span>
+                <Badge variant="outline" className="text-[10px]">📷 {item.response.images.length}</Badge>
               )}
             </div>
           )}
-        </div>
+        </Card>
       ))}
     </div>
   );
