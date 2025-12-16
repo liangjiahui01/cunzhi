@@ -59,12 +59,17 @@ function App() {
   const [serverOnline, setServerOnline] = useState<boolean>(false);
 
   const filteredRequests = useMemo(() => {
-    if (activeTab === "all") return requests;
-    if (activeTab === "current") {
+    let result: WaitMeRequest[] = [];
+    if (activeTab === "all") {
+      result = requests;
+    } else if (activeTab === "current") {
       if (!currentProjectPath) return [];
-      return requests.filter((r) => r.projectPath === currentProjectPath);
+      result = requests.filter((r) => r.projectPath === currentProjectPath);
     }
-    return [];
+    // 按时间倒序排列（最新的在上面）
+    return [...result].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
   }, [requests, activeTab, currentProjectPath]);
 
   useEffect(() => {
@@ -149,9 +154,7 @@ function App() {
   }, []);
 
   const clearHistory = useCallback(() => {
-    if (window.confirm("确定要清空所有历史记录吗？此操作不可撤销。")) {
-      setHistory([]);
-    }
+    setHistory([]);
   }, []);
 
   const deleteHistoryItems = useCallback((ids: string[]) => {

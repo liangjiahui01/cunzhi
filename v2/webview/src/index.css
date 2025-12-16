@@ -128,6 +128,8 @@ html, body, #root {
   font-size: 13px;
   font-family: var(--vscode-editor-font-family, 'Menlo', 'Monaco', 'Consolas', monospace);
   color: #c41a16;
+  cursor: text;
+  user-select: all;
 }
 
 .dark .prose code {
@@ -157,10 +159,10 @@ html, body, #root {
 .prose blockquote {
   margin: 0.5em 0;
   padding: 0.5em 1em;
-  border-left: 3px solid #d1d5db;
-  background-color: #f9fafb;
+  border-left: 3px solid #6b7280;
+  background-color: #f3f4f6;
   border-radius: 0.25rem;
-  color: #374151;
+  color: #1f2937;
 }
 
 .dark .prose blockquote {
