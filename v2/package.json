@@ -43,8 +43,21 @@
       {
         "command": "waitme.quickOpen",
         "title": "WaitMe: 快速打开"
+      },
+      {
+        "command": "waitme.copyCodeReference",
+        "title": "WaitMe: 复制代码引用"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "waitme.copyCodeReference",
+          "when": "editorTextFocus && editorHasSelection",
+          "group": "9_cutcopypaste@10"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {

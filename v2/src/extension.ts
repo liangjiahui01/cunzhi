@@ -171,6 +171,54 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand("waitme.copyCodeReference", () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage("没有活动的编辑器");
+        return;
+      }
+
+      const selection = editor.selection;
+      if (selection.isEmpty) {
+        vscode.window.showWarningMessage("请先选择代码");
+        return;
+      }
+
+      const document = editor.document;
+      const selectedText = document.getText(selection);
+      const startLine = selection.start.line + 1;
+      const endLine = selection.end.line + 1;
+      
+      // 获取相对路径
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+      let relativePath: string;
+      if (workspaceFolder) {
+        relativePath = path.relative(workspaceFolder.uri.fsPath, document.uri.fsPath);
+      } else {
+        relativePath = document.fileName;
+      }
+
+      // 构建行号字符串
+      const lineRange = startLine === endLine ? `:${startLine}` : `:${startLine}-${endLine}`;
+      
+      // 获取文件扩展名用于代码块语言标识
+      const ext = path.extname(document.fileName).slice(1);
+      const langMap: Record<string, string> = {
+        ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
+        py: "python", md: "markdown", json: "json", css: "css",
+        html: "html", vue: "vue", go: "go", rs: "rust", java: "java"
+      };
+      const lang = langMap[ext] || ext || "text";
+
+      // 构建 Markdown 格式的代码引用
+      const codeReference = `${relativePath}${lineRange}\n\`\`\`${lang}\n${selectedText}\n\`\`\``;
+
+      vscode.env.clipboard.writeText(codeReference);
+      vscode.window.showInformationMessage(`已复制代码引用 (${relativePath}${lineRange})`);
+    })
+  );
+
   registerToHttpServer(httpClient);
   startHealthCheck(httpClient, provider);
 
