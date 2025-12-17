@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { ImagePreview } from "./ImagePreview";
 
 const QUICK_TEMPLATES = [
   { id: "done", label: "✓ Done", content: "完成", tooltip: "标记任务已完成，AI 将停止当前任务" },
   { id: "clear", label: "✗ Clear", content: "清除", tooltip: "清除当前内容，重新开始" },
+  { id: "newtopic", label: "🔖 新话题", content: "[新话题] 请先输出分界线: ---新话题：话题标题---", tooltip: "开始新讨论主题，AI 必须在回复开头输出分界线" },
   { id: "issue", label: "★ Issue", content: "新问题", tooltip: "提出新问题或发现问题" },
   { id: "remember", label: "◉ Remember", content: "记住", tooltip: "让 AI 记住重要信息到 Memory" },
   { id: "summary", label: "◎ Summary", content: "总结", tooltip: "让 AI 总结当前对话或代码" },
@@ -294,14 +296,10 @@ export function RequestCard({
           <div className="flex flex-wrap gap-2 mb-4">
             {images.map((img, index) => (
               <div key={index} className="relative group">
-                <img
+                <ImagePreview
                   src={img.data.startsWith("data:") ? img.data : `data:${img.media_type};base64,${img.data}`}
                   alt={img.filename || "uploaded"}
                   className="h-16 w-16 object-cover rounded-lg border border-border shadow-sm"
-                  onError={(e) => {
-                    console.error("Image load error:", img.filename);
-                    e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect fill='%23333' width='64' height='64'/%3E%3Ctext x='32' y='32' text-anchor='middle' fill='%23888'%3E?%3C/text%3E%3C/svg%3E";
-                  }}
                 />
                 <button
                   onClick={() => removeImage(index)}

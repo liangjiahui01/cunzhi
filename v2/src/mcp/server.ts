@@ -113,7 +113,7 @@ export class WaitMeServer {
         {
           name: "waitme",
           description:
-            "智能代码审查交互工具，支持预定义选项、自由文本输入和图片上传",
+            "智能代码审查交互工具，支持预定义选项、自由文本输入和图片上传。\n\n特殊指令：当用户消息包含 [新话题] 时，必须在回复开头输出分界线格式：\n---新话题：话题标题---",
           inputSchema: {
             type: "object" as const,
             properties: {
