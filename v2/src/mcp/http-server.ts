@@ -5,6 +5,7 @@ import type {
   WaitMeRequest,
   WaitMeResponse,
   WindowRegistration,
+  HistoryItem,
 } from "../types";
 
 interface PendingRequest {
@@ -20,10 +21,14 @@ export class HttpServer {
   private registeredWindows: Map<string, WindowRegistration> = new Map();
   private requestsByProject: Map<string, WaitMeRequest[]> = new Map();
   private responses: Map<string, WaitMeResponse> = new Map();
+  private historyFilePath: string;
 
   constructor(port: number) {
     this.port = port;
     this.server = http.createServer(this.handleRequest.bind(this));
+    // 历史数据存储在用户主目录下
+    const homeDir = process.env.HOME || process.env.USERPROFILE || ".";
+    this.historyFilePath = path.join(homeDir, ".waitme-history.json");
   }
 
   async start(): Promise<void> {
@@ -124,6 +129,14 @@ export class HttpServer {
       this.handlePollById(url, res);
     } else if (req.method === "POST" && url.pathname === "/api/restart") {
       this.handleRestart(res);
+    } else if (req.method === "GET" && url.pathname === "/api/history") {
+      this.handleGetHistory(res);
+    } else if (req.method === "POST" && url.pathname === "/api/history") {
+      this.handleAddHistory(req, res);
+    } else if (req.method === "DELETE" && url.pathname === "/api/history") {
+      this.handleClearHistory(res);
+    } else if (req.method === "DELETE" && url.pathname.startsWith("/api/history/")) {
+      this.handleDeleteHistory(url, res);
     } else {
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not found" }));
@@ -379,6 +392,85 @@ export class HttpServer {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: true }));
   }
+
+  // ============ 历史数据管理 ============
+  
+  private loadHistory(): HistoryItem[] {
+    try {
+      if (fs.existsSync(this.historyFilePath)) {
+        const data = fs.readFileSync(this.historyFilePath, "utf-8");
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error("Failed to load history:", e);
+    }
+    return [];
+  }
+
+  private saveHistory(history: HistoryItem[]): void {
+    try {
+      fs.writeFileSync(this.historyFilePath, JSON.stringify(history, null, 2));
+    } catch (e) {
+      console.error("Failed to save history:", e);
+    }
+  }
+
+  private handleGetHistory(res: http.ServerResponse): void {
+    const history = this.loadHistory();
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ history }));
+  }
+
+  private handleAddHistory(req: http.IncomingMessage, res: http.ServerResponse): void {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try {
+        const item = JSON.parse(body) as HistoryItem;
+        const history = this.loadHistory();
+        // 检查是否已存在，如果存在则更新
+        const existingIndex = history.findIndex(h => h.requestId === item.requestId);
+        if (existingIndex >= 0) {
+          history[existingIndex] = item;
+        } else {
+          history.unshift(item); // 新记录添加到开头
+        }
+        // 限制历史记录数量（最多保存 500 条）
+        if (history.length > 500) {
+          history.splice(500);
+        }
+        this.saveHistory(history);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Invalid JSON" }));
+      }
+    });
+  }
+
+  private handleDeleteHistory(url: URL, res: http.ServerResponse): void {
+    const requestId = url.pathname.split("/").pop();
+    if (!requestId) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Missing request ID" }));
+      return;
+    }
+
+    const history = this.loadHistory();
+    const newHistory = history.filter(h => h.requestId !== requestId);
+    this.saveHistory(newHistory);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: true }));
+  }
+
+  private handleClearHistory(res: http.ServerResponse): void {
+    this.saveHistory([]);
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ success: true }));
+  }
+
+  // ============ 请求管理 ============
 
   private handleDelete(url: URL, res: http.ServerResponse): void {
     const requestId = url.pathname.split("/").pop();

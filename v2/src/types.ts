@@ -35,3 +35,14 @@ export interface PendingRequest {
   resolve: (response: WaitMeResponse) => void;
   reject: (error: Error) => void;
 }
+
+export interface HistoryItem {
+  requestId: string;
+  projectPath: string;
+  message: string;
+  predefinedOptions?: string[];
+  isMarkdown?: boolean;
+  timestamp: string;
+  status: "pending" | "completed";
+  response?: WaitMeResponse;
+}

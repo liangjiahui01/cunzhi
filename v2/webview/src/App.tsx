@@ -17,6 +17,55 @@ declare const acquireVsCodeApi: () => {
 
 const vscode = acquireVsCodeApi();
 
+// HTTP API 基础 URL
+const API_BASE = "http://127.0.0.1:19528";
+
+// 历史数据 API
+async function fetchHistory(): Promise<WaitMeRequest[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/history`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.history || [];
+    }
+  } catch (e) {
+    console.error("Failed to fetch history:", e);
+  }
+  return [];
+}
+
+async function saveHistoryItem(item: WaitMeRequest): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/history`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item),
+    });
+  } catch (e) {
+    console.error("Failed to save history item:", e);
+  }
+}
+
+async function deleteHistoryItem(requestId: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/history/${requestId}`, {
+      method: "DELETE",
+    });
+  } catch (e) {
+    console.error("Failed to delete history item:", e);
+  }
+}
+
+async function clearAllHistory(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/history`, {
+      method: "DELETE",
+    });
+  } catch (e) {
+    console.error("Failed to clear history:", e);
+  }
+}
+
 function loadState<T>(key: string, defaultValue: T): T {
   try {
     const state = vscode.getState() as Record<string, unknown> | undefined;
@@ -50,8 +99,9 @@ type TabType = "current" | "all" | "history";
 
 function App() {
   const [requests, setRequests] = useState<WaitMeRequest[]>([]);
-  const [history, setHistory] = useState<WaitMeRequest[]>(() => loadState("history", []));
+  const [history, setHistory] = useState<WaitMeRequest[]>([]);
   const [contextRules, setContextRules] = useState<ContextRule[]>(() => loadState("contextRules", INITIAL_CONTEXT_RULES));
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set(loadState<string[]>("collapsedIds", [])));
   const [activeTab, setActiveTab] = useState<TabType>("current");
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
@@ -73,9 +123,13 @@ function App() {
     );
   }, [requests, activeTab, currentProjectPath]);
 
+  // 初始加载历史数据
   useEffect(() => {
-    saveState("history", history);
-  }, [history]);
+    fetchHistory().then((h) => {
+      setHistory(h);
+      setHistoryLoaded(true);
+    });
+  }, []);
 
   useEffect(() => {
     saveState("contextRules", contextRules);
@@ -96,10 +150,10 @@ function App() {
           setRequests((prev) => {
             const completed = prev.find((r) => r.requestId === message.requestId);
             if (completed) {
-              setHistory((h) => [
-                { ...completed, status: "completed", response: message.response },
-                ...h.slice(0, 49),
-              ]);
+              const historyItem = { ...completed, status: "completed", response: message.response };
+              // 保存到服务端
+              saveHistoryItem(historyItem);
+              setHistory((h) => [historyItem, ...h]);
             }
             return prev.filter((r) => r.requestId !== message.requestId);
           });
@@ -158,11 +212,15 @@ function App() {
     );
   }, []);
 
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
+    await clearAllHistory();
     setHistory([]);
   }, []);
 
-  const deleteHistoryItems = useCallback((ids: string[]) => {
+  const deleteHistoryItems = useCallback(async (ids: string[]) => {
+    for (const id of ids) {
+      await deleteHistoryItem(id);
+    }
     setHistory((prev) => prev.filter((h) => !ids.includes(h.requestId)));
   }, []);
 

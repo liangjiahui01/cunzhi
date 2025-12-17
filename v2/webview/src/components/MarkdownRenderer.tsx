@@ -63,25 +63,24 @@ export function MarkdownRenderer({ content }: Props) {
           
           return (
             <div 
-              className="relative group cursor-pointer"
+              className="relative group cursor-pointer code-block-wrapper"
               onClick={() => copyToClipboard(codeText, codeId)}
               title="点击复制代码"
             >
-              <pre
-                style={{
+              <SyntaxHighlighter
+                style={isDark ? oneDark : oneLight}
+                language={match ? match[1] : "text"}
+                PreTag="div"
+                customStyle={{
                   margin: "0.5em 0",
                   borderRadius: "0.375rem",
                   fontSize: "13px",
                   backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
                   border: isDark ? "1px solid #30363d" : "1px solid #d0d7de",
-                  padding: "0.75rem",
-                  overflowX: "auto",
                 }}
               >
-                <code style={{ color: isDark ? "#e6edf3" : "#1a1a1a", fontWeight: 500 }}>
-                  {codeText}
-                </code>
-              </pre>
+                {codeText}
+              </SyntaxHighlighter>
               <span className={`absolute top-2 right-2 text-xs px-2 py-1 rounded transition-opacity ${
                 isCopied 
                   ? "opacity-100 bg-emerald-500 text-white" 

@@ -142,8 +142,70 @@ html, body, #root {
 .prose pre code {
   background-color: transparent !important;
   padding: 0 !important;
-  color: #1a1a1a !important;
   border: none !important;
+}
+
+/* 代码块语法高亮颜色增强 - 浅色模式 */
+.code-block-wrapper code[class*="language-"],
+.code-block-wrapper pre[class*="language-"] {
+  color: #24292f !important;
+}
+
+.code-block-wrapper .token.comment,
+.code-block-wrapper .token.prolog,
+.code-block-wrapper .token.doctype,
+.code-block-wrapper .token.cdata {
+  color: #6a737d !important;
+}
+
+.code-block-wrapper .token.punctuation {
+  color: #24292f !important;
+}
+
+.code-block-wrapper .token.property,
+.code-block-wrapper .token.tag,
+.code-block-wrapper .token.boolean,
+.code-block-wrapper .token.number,
+.code-block-wrapper .token.constant,
+.code-block-wrapper .token.symbol {
+  color: #005cc5 !important;
+}
+
+.code-block-wrapper .token.selector,
+.code-block-wrapper .token.attr-name,
+.code-block-wrapper .token.string,
+.code-block-wrapper .token.char,
+.code-block-wrapper .token.builtin {
+  color: #032f62 !important;
+}
+
+.code-block-wrapper .token.operator,
+.code-block-wrapper .token.entity,
+.code-block-wrapper .token.url,
+.code-block-wrapper .token.variable {
+  color: #d73a49 !important;
+}
+
+.code-block-wrapper .token.atrule,
+.code-block-wrapper .token.attr-value,
+.code-block-wrapper .token.function,
+.code-block-wrapper .token.class-name {
+  color: #6f42c1 !important;
+}
+
+.code-block-wrapper .token.keyword {
+  color: #d73a49 !important;
+}
+
+.code-block-wrapper .token.regex,
+.code-block-wrapper .token.important {
+  color: #e36209 !important;
+}
+
+/* 深色模式保持原样 */
+.dark .code-block-wrapper code[class*="language-"],
+.dark .code-block-wrapper pre[class*="language-"] {
+  color: #e6edf3 !important;
 }
 
 .dark .prose pre code {
