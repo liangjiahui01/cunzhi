@@ -9,9 +9,11 @@ interface Props {
   history: WaitMeRequest[];
   onItemClick: (item: WaitMeRequest) => void;
   onDeleteItems?: (ids: string[]) => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
-export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
+export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, isLoading }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelecting, setIsSelecting] = useState(false);
 
@@ -57,29 +59,42 @@ export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
 
   return (
     <div className="space-y-3">
-      {onDeleteItems && (
-        <div className="flex items-center gap-2 mb-3">
-          {isSelecting ? (
-            <>
-              <Button variant="outline" size="sm" onClick={selectAll} className="h-7 text-xs">
-                全选
-              </Button>
-              <Button variant="outline" size="sm" onClick={clearSelection} className="h-7 text-xs">
-                取消
-              </Button>
-              {selectedIds.size > 0 && (
-                <Button variant="destructive" size="sm" onClick={handleDelete} className="h-7 text-xs">
-                  删除 ({selectedIds.size})
+      <div className="flex items-center gap-2 mb-3">
+        {onRefresh && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onRefresh} 
+            disabled={isLoading}
+            className="h-7 text-xs glass-button"
+          >
+            {isLoading ? "⏳" : "🔄"} 刷新
+          </Button>
+        )}
+        {onDeleteItems && (
+          <>
+            {isSelecting ? (
+              <>
+                <Button variant="outline" size="sm" onClick={selectAll} className="h-7 text-xs">
+                  全选
                 </Button>
-              )}
-            </>
-          ) : (
-            <Button variant="outline" size="sm" onClick={() => setIsSelecting(true)} className="h-7 text-xs glass-button">
-              选择
-            </Button>
-          )}
-        </div>
-      )}
+                <Button variant="outline" size="sm" onClick={clearSelection} className="h-7 text-xs">
+                  取消
+                </Button>
+                {selectedIds.size > 0 && (
+                  <Button variant="destructive" size="sm" onClick={handleDelete} className="h-7 text-xs">
+                    删除 ({selectedIds.size})
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setIsSelecting(true)} className="h-7 text-xs glass-button">
+                选择
+              </Button>
+            )}
+          </>
+        )}
+      </div>
 
       {history.map((item, index) => (
         <Card
@@ -104,7 +119,7 @@ export function HistoryList({ history, onItemClick, onDeleteItems }: Props) {
                 />
               )}
               <Badge variant="outline" className="text-[10px] font-normal">
-                {item.projectPath.split("/").pop()}
+                {item.projectPath?.split("/").pop() || "未知项目"}
               </Badge>
             </div>
             <span>{new Date(item.timestamp).toLocaleString()}</span>

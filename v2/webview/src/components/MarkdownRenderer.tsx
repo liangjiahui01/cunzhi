@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -14,7 +14,7 @@ interface Props {
 export function MarkdownRenderer({ content }: Props) {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const codeIdRef = { current: 0 };
+  const renderCountRef = useRef(0);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -34,7 +34,19 @@ export function MarkdownRenderer({ content }: Props) {
     }
   }, []);
 
-  codeIdRef.current = 0;
+  // 使用 content 的 hash 作为稳定的 code ID 前缀
+  const contentHash = useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      hash = ((hash << 5) - hash) + content.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash).toString(36);
+  }, [content]);
+
+  // 每次渲染时重置计数器
+  const codeIndexRef = useRef(0);
+  codeIndexRef.current = 0;
 
   return (
     <ReactMarkdown
@@ -45,7 +57,8 @@ export function MarkdownRenderer({ content }: Props) {
           const match = /language-(\w+)/.exec(className || "");
           const isInline = !match && !className;
           const codeText = String(children).replace(/\n$/, "");
-          const codeId = `code-${codeIdRef.current++}`;
+          // 使用 content hash + index 生成稳定的 ID
+          const codeId = `code-${contentHash}-${codeIndexRef.current++}`;
           const isCopied = copiedId === codeId;
           
           if (isInline) {

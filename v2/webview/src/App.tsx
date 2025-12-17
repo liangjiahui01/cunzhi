@@ -101,7 +101,7 @@ function App() {
   const [requests, setRequests] = useState<WaitMeRequest[]>([]);
   const [history, setHistory] = useState<WaitMeRequest[]>([]);
   const [contextRules, setContextRules] = useState<ContextRule[]>(() => loadState("contextRules", INITIAL_CONTEXT_RULES));
-  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set(loadState<string[]>("collapsedIds", [])));
   const [activeTab, setActiveTab] = useState<TabType>("current");
   const [selectedItem, setSelectedItem] = useState<WaitMeRequest | null>(null);
@@ -123,13 +123,21 @@ function App() {
     );
   }, [requests, activeTab, currentProjectPath]);
 
+  // 加载历史数据
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const h = await fetchHistory();
+      setHistory(h);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   // 初始加载历史数据
   useEffect(() => {
-    fetchHistory().then((h) => {
-      setHistory(h);
-      setHistoryLoaded(true);
-    });
-  }, []);
+    loadHistory();
+  }, [loadHistory]);
 
   useEffect(() => {
     saveState("contextRules", contextRules);
@@ -382,7 +390,13 @@ function App() {
       <ScrollArea className="flex-1">
         <div className="p-4">
           {activeTab === "history" ? (
-            <HistoryList history={history} onItemClick={setSelectedItem} onDeleteItems={deleteHistoryItems} />
+            <HistoryList 
+              history={history} 
+              onItemClick={setSelectedItem} 
+              onDeleteItems={deleteHistoryItems}
+              onRefresh={loadHistory}
+              isLoading={historyLoading}
+            />
           ) : filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] text-muted-foreground">
               <div className="text-4xl mb-4 opacity-30">🎯</div>

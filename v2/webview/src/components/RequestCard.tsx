@@ -15,7 +15,7 @@ import { ImagePreview } from "./ImagePreview";
 const QUICK_TEMPLATES = [
   { id: "done", label: "✓ Done", content: "完成", tooltip: "标记任务已完成，AI 将停止当前任务" },
   { id: "clear", label: "✗ Clear", content: "清除", tooltip: "清除当前内容，重新开始" },
-  { id: "newtopic", label: "🔖 新话题", content: "[新话题] 请先输出分界线: ---新话题：话题标题---", tooltip: "开始新讨论主题，AI 必须在回复开头输出分界线" },
+  { id: "newtopic", label: "🔖 新话题", content: "[新话题开始] 请立即在回复开头输出分界线，格式：---新话题：{根据当前会话内容自动生成的标题}---", tooltip: "开始新讨论主题，AI 会自动生成话题标题" },
   { id: "issue", label: "★ Issue", content: "新问题", tooltip: "提出新问题或发现问题" },
   { id: "remember", label: "◉ Remember", content: "记住", tooltip: "让 AI 记住重要信息到 Memory" },
   { id: "summary", label: "◎ Summary", content: "总结", tooltip: "让 AI 总结当前对话或代码" },
