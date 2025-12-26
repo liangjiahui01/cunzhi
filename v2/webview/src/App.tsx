@@ -93,6 +93,7 @@ const INITIAL_CONTEXT_RULES: ContextRule[] = [
   { id: "no_tests", label: "不要生成测试脚本", enabled: true, content: "❌请记住，不要生成测试脚本" },
   { id: "no_compile", label: "不要编译，用户自己编译", enabled: true, content: "❌请记住，不要编译，用户自己编译" },
   { id: "no_run", label: "不要运行，用户自己运行", enabled: true, content: "❌请记住，不要运行，用户自己运行" },
+  {id: "no_code", label: "不要写代码，继续用户讨论", enabled: true, content: "❌请记住，不要写代码，继续用户讨论" }
 ];
 
 type TabType = "current" | "all" | "history";
