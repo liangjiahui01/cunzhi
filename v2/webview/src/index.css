@@ -145,6 +145,12 @@ html, body, #root {
   border: none !important;
 }
 
+/* 代码块内允许局部选中，避免 `.prose code { user-select: all; }` 导致选区抖动 */
+.code-block-wrapper code {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* 代码块语法高亮颜色增强 - 浅色模式 */
 .code-block-wrapper code[class*="language-"],
 .code-block-wrapper pre[class*="language-"] {

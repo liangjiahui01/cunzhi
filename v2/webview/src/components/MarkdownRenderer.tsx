@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -13,7 +13,6 @@ interface Props {
 
 export function MarkdownRenderer({ content }: Props) {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -23,45 +22,18 @@ export function MarkdownRenderer({ content }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  const copyToClipboard = useCallback(async (text: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 1500);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  }, []);
-
-  // 使用 content 的 hash 作为稳定的 code ID 前缀
-  const contentHash = useMemo(() => {
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-      hash = ((hash << 5) - hash) + content.charCodeAt(i);
-      hash |= 0;
-    }
-    return Math.abs(hash).toString(36);
-  }, [content]);
-
   // 使用 useMemo 缓存 components 对象，避免每次渲染时重新创建导致的闪烁
   const components = useMemo(() => {
-    let codeIndex = 0;
-
     return {
       code({ node, className, children, ...props }: any) {
         const match = /language-(\w+)/.exec(className || "");
         const isInline = !match && !className;
         const codeText = String(children).replace(/\n$/, "");
-        // 使用 content hash + index 生成稳定的 ID
-        const codeId = `code-${contentHash}-${codeIndex++}`;
-        const isCopied = copiedId === codeId;
 
         if (isInline) {
           return (
             <code
-              className={`${className || ""} cursor-pointer hover:opacity-80 transition-all ${isCopied ? "bg-emerald-500/20" : ""}`}
-              onClick={() => copyToClipboard(codeText, codeId)}
-              title="点击复制"
+              className={className || ""}
               {...props}
             >
               {children}
@@ -70,15 +42,22 @@ export function MarkdownRenderer({ content }: Props) {
         }
 
         return (
-          <div
-            className="relative group cursor-pointer code-block-wrapper"
-            onClick={() => copyToClipboard(codeText, codeId)}
-            title="点击复制代码"
-          >
+          <div className="relative code-block-wrapper">
             <SyntaxHighlighter
               style={isDark ? oneDark : oneLight}
               language={match ? match[1] : "text"}
               PreTag="div"
+              codeTagProps={{
+                style: {
+                  // 避免被全局 `.prose code { user-select: all; }` 命中导致“自动全选整块/选区抖动”
+                  userSelect: "text",
+                  WebkitUserSelect: "text",
+                  // 清理行内 code 的样式，避免影响代码块布局/选择
+                  background: "transparent",
+                  padding: 0,
+                  borderRadius: 0,
+                },
+              }}
               customStyle={{
                 margin: "0.5em 0",
                 borderRadius: "0.375rem",
@@ -89,17 +68,11 @@ export function MarkdownRenderer({ content }: Props) {
             >
               {codeText}
             </SyntaxHighlighter>
-            <span className={`absolute top-2 right-2 text-xs px-2 py-1 rounded pointer-events-none ${isCopied
-              ? "opacity-100 bg-emerald-500 text-white"
-              : "opacity-0 group-hover:opacity-100 bg-black/50 text-white"
-              }`}>
-              {isCopied ? "✓ 已复制" : "点击复制"}
-            </span>
           </div>
         );
       },
     };
-  }, [isDark, copiedId, contentHash, copyToClipboard]);
+  }, [isDark]);
 
   return (
     <ReactMarkdown

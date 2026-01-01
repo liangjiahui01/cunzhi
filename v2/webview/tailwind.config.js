@@ -60,9 +60,9 @@ export default {
   				'5': 'hsl(var(--chart-5))'
   			}
   		},
-  		typography: {
-  			DEFAULT: {
-  				css: {
+			typography: {
+				DEFAULT: {
+					css: {
   					color: 'var(--wm-fg, var(--vscode-editor-foreground))',
   					a: {
   						color: 'var(--vscode-textLink-foreground)'
@@ -70,22 +70,23 @@ export default {
   					strong: {
   						color: 'var(--wm-fg, var(--vscode-editor-foreground))'
   					},
-  					code: {
-  						color: 'var(--wm-code-fg, var(--vscode-editor-foreground))',
-  						backgroundColor: 'var(--wm-code-bg, var(--vscode-textBlockQuote-background))',
-  						padding: '0.125rem 0.25rem',
-  						borderRadius: '0.25rem'
-  					},
-  					'code::before': {
-  						content: '"'
-  					},
-  					'code::after': {
-  						content: '"'
-  					},
-  					pre: {
-  						backgroundColor: 'var(--wm-code-bg, var(--vscode-textBlockQuote-background))',
-  						color: 'var(--wm-fg, var(--vscode-editor-foreground))'
-  					},
+						code: {
+							color: 'var(--wm-code-fg, var(--vscode-editor-foreground))',
+							backgroundColor: 'var(--wm-code-bg, var(--vscode-textBlockQuote-background))',
+							padding: '0.125rem 0.25rem',
+							borderRadius: '0.25rem'
+						},
+						'code::before': {
+							// 避免生成不合法的 CSS（content:";）导致构建告警；并移除默认装饰字符
+							content: '""'
+						},
+						'code::after': {
+							content: '""'
+						},
+						pre: {
+							backgroundColor: 'var(--wm-code-bg, var(--vscode-textBlockQuote-background))',
+							color: 'var(--wm-fg, var(--vscode-editor-foreground))'
+						},
   					h1: {
   						color: 'var(--wm-fg, var(--vscode-editor-foreground))'
   					},
