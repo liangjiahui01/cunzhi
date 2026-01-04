@@ -1,3 +1,11 @@
+export interface PlanData {
+  mode: "discuss" | "final";
+  title: string;
+  description: string;
+  steps?: string[];
+  filesToModify?: string[];
+}
+
 export interface WaitMeRequest {
   requestId: string;
   projectPath: string;
@@ -7,6 +15,8 @@ export interface WaitMeRequest {
   timestamp: string;
   status?: "pending" | "completed";
   response?: WaitMeResponse;
+  type?: "waitme" | "plan";
+  planData?: PlanData;
 }
 
 export interface WaitMeResponse {

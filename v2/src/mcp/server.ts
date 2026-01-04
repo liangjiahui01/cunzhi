@@ -107,6 +107,76 @@ export class WaitMeServer {
     return { content };
   }
 
+  private buildPlanContent(response: WaitMeResponse, request: WaitMeRequest) {
+    const content: Array<{ type: "text"; text: string }> = [];
+    const textParts: string[] = [];
+
+    const selectedOptions = response.selectedOptions || [];
+    const mode = request.planData?.mode || "final";
+
+    // Discuss 模式的响应
+    const isContinueDiscuss = selectedOptions.includes("continue_discuss");
+    const isRequestFinal = selectedOptions.includes("request_final");
+
+    // Final 模式的响应
+    const isApproved = selectedOptions.includes("approved");
+    const isRejected = selectedOptions.includes("rejected");
+    const needsModification = selectedOptions.includes("needs_modification");
+
+    if (mode === "discuss") {
+      // 讨论模式的响应处理
+      if (isContinueDiscuss) {
+        textParts.push("💬 **用户希望继续讨论**，请根据反馈继续优化方案，使用 plan(mode='discuss') 回复。");
+      } else if (isRequestFinal) {
+        textParts.push("📋 **用户请求最终方案**，请使用 plan(mode='final') 提交完整的最终方案。");
+      } else if (isRejected) {
+        textParts.push("❌ **计划被拒绝**，请完全重新设计方案。");
+      }
+    } else {
+      // Final 模式的响应处理
+      if (isApproved) {
+        textParts.push("✅ **计划已批准**，可以开始实施。");
+      } else if (isRejected) {
+        textParts.push("❌ **计划被拒绝**，请根据反馈重新设计方案。");
+      } else if (needsModification) {
+        textParts.push("✏️ **需要修改**，请根据用户反馈调整后，使用 plan(mode='discuss') 继续讨论，或 plan(mode='final') 提交修改后的完整方案。");
+      }
+    }
+
+    // 添加用户反馈
+    if (response.userInput && response.userInput.trim()) {
+      textParts.push(`\n**用户反馈：**\n${response.userInput.trim()}`);
+    }
+
+    // 添加焦点提醒（仅在批准时）
+    if (isApproved && request.planData) {
+      const focusParts: string[] = [];
+      focusParts.push(`\n---\n📌 **当前焦点：${request.planData.title}**`);
+      
+      if (request.planData.filesToModify && request.planData.filesToModify.length > 0) {
+        focusParts.push(`涉及文件：${request.planData.filesToModify.join(", ")}`);
+      }
+      
+      focusParts.push("请专注于当前计划，忽略之前的话题。");
+      textParts.push(focusParts.join("\n"));
+    }
+
+    // 合并内容
+    if (textParts.length > 0) {
+      content.push({
+        type: "text" as const,
+        text: textParts.join("\n"),
+      });
+    } else {
+      content.push({
+        type: "text" as const,
+        text: "用户未提供任何反馈",
+      });
+    }
+
+    return { content };
+  }
+
   private setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
@@ -134,51 +204,120 @@ export class WaitMeServer {
             required: ["message"],
           },
         },
+        {
+          name: "plan",
+          description:
+            "在修改代码前提交实施计划，等待用户审批。支持两种模式：discuss（讨论阶段，只回复当前点）和 final（提交完整最终方案）。",
+          inputSchema: {
+            type: "object" as const,
+            properties: {
+              mode: {
+                type: "string",
+                enum: ["discuss", "final"],
+                description: "模式：discuss=讨论阶段，只回复当前讨论点；final=提交完整最终方案等待批准",
+              },
+              title: {
+                type: "string",
+                description: "计划标题，简洁描述要做什么",
+              },
+              description: {
+                type: "string",
+                description: "详细的方案说明，支持 Markdown 格式。discuss模式下可以只写当前讨论的点",
+              },
+              steps: {
+                type: "array",
+                items: { type: "string" },
+                description: "具体执行步骤列表（可选，final模式建议提供完整列表）",
+              },
+              files_to_modify: {
+                type: "array",
+                items: { type: "string" },
+                description: "计划修改的文件路径（可选，final模式建议提供完整列表）",
+              },
+            },
+            required: ["mode", "title", "description"],
+          },
+        },
       ],
     }));
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (request.params.name !== "waitme") {
-        throw new Error(`Unknown tool: ${request.params.name}`);
-      }
-
-      const args = request.params.arguments as {
-        message: string;
-        predefined_options?: string[];
-        is_markdown?: boolean;
-      };
-
-      const waitmeRequest: WaitMeRequest = {
-        requestId: uuidv4(),
-        projectPath: process.cwd(),
-        message: args.message,
-        predefinedOptions: args.predefined_options,
-        isMarkdown: args.is_markdown ?? true,
-        timestamp: new Date().toISOString(),
-      };
-
-      try {
-        // 1. 添加请求到 HTTP Server
-        await this.httpClient.addRequest(waitmeRequest);
-        
-        // 2. 轮询等待响应
-        const response = await this.httpClient.waitForResponse(
-          waitmeRequest.requestId,
-          REQUEST_TIMEOUT_MS
-        );
-        return this.buildMcpContent(response);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${errorMessage}`,
-            },
-          ],
-          isError: true,
+      const toolName = request.params.name;
+      
+      if (toolName === "waitme") {
+        const args = request.params.arguments as {
+          message: string;
+          predefined_options?: string[];
+          is_markdown?: boolean;
         };
+
+        const waitmeRequest: WaitMeRequest = {
+          requestId: uuidv4(),
+          projectPath: process.cwd(),
+          message: args.message,
+          predefinedOptions: args.predefined_options,
+          isMarkdown: args.is_markdown ?? true,
+          timestamp: new Date().toISOString(),
+          type: "waitme",
+        };
+
+        try {
+          await this.httpClient.addRequest(waitmeRequest);
+          const response = await this.httpClient.waitForResponse(
+            waitmeRequest.requestId,
+            REQUEST_TIMEOUT_MS
+          );
+          return this.buildMcpContent(response);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          return {
+            content: [{ type: "text" as const, text: `Error: ${errorMessage}` }],
+            isError: true,
+          };
+        }
+      } else if (toolName === "plan") {
+        const args = request.params.arguments as {
+          mode: "discuss" | "final";
+          title: string;
+          description: string;
+          steps?: string[];
+          files_to_modify?: string[];
+        };
+
+        const planRequest: WaitMeRequest = {
+          requestId: uuidv4(),
+          projectPath: process.cwd(),
+          message: args.description,
+          isMarkdown: true,
+          timestamp: new Date().toISOString(),
+          type: "plan",
+          planData: {
+            mode: args.mode,
+            title: args.title,
+            description: args.description,
+            steps: args.steps,
+            filesToModify: args.files_to_modify,
+          },
+        };
+
+        try {
+          await this.httpClient.addRequest(planRequest);
+          const response = await this.httpClient.waitForResponse(
+            planRequest.requestId,
+            REQUEST_TIMEOUT_MS
+          );
+          return this.buildPlanContent(response, planRequest);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          return {
+            content: [{ type: "text" as const, text: `Error: ${errorMessage}` }],
+            isError: true,
+          };
+        }
+      } else {
+        throw new Error(`Unknown tool: ${toolName}`);
       }
     });
   }

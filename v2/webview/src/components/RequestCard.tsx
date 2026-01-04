@@ -337,6 +337,31 @@ export function RequestCard({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsSubmitting(true);
+                    // 合并用户输入和切换提示
+                    const combinedInput = [
+                      userInput,
+                      "⚠️ 请使用 plan 工具提交完整实施方案后再执行"
+                    ].filter(Boolean).join("\n\n");
+                    // 合并选项
+                    const combinedOptions = [...selectedOptions, "switch_to_plan"];
+                    onResponse(request.requestId, combinedInput, combinedOptions, images.length > 0 ? images : undefined);
+                  }}
+                  disabled={isSubmitting}
+                  className="border-blue-500/50 text-blue-600 hover:bg-blue-500/10"
+                >
+                  📋 请先给方案
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>让 AI 先提交 Plan 方案</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isSubmitting}

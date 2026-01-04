@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { RequestCard } from "./components/RequestCard";
+import { PlanCard } from "./components/PlanCard";
 import { HistoryList } from "./components/HistoryList";
 import { DetailModal } from "./components/DetailModal";
 import type { WaitMeRequest, ImageAttachment, ContextRule, WaitMeConfig } from "./types";
@@ -93,7 +94,6 @@ const INITIAL_CONTEXT_RULES: ContextRule[] = [
   { id: "no_tests", label: "不要生成测试脚本", enabled: true, content: "❌请记住，不要生成测试脚本" },
   { id: "no_compile", label: "不要编译，用户自己编译", enabled: true, content: "❌请记住，不要编译，用户自己编译" },
   { id: "no_run", label: "不要运行，用户自己运行", enabled: true, content: "❌请记住，不要运行，用户自己运行" },
-  {id: "no_code", label: "不要写代码，继续用户讨论", enabled: true, content: "❌请记住，不要写代码，继续用户讨论" }
 ];
 
 type TabType = "current" | "all" | "history";
@@ -412,15 +412,26 @@ function App() {
                   className="animate-fade-in-up"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <RequestCard
-                    request={request}
-                    onResponse={handleResponse}
-                    onDelete={handleDelete}
-                    contextRules={contextRules}
-                    onToggleContextRule={toggleContextRule}
-                    collapsed={collapsedIds.has(request.requestId)}
-                    onToggleCollapse={toggleCollapse}
-                  />
+                  {request.type === "plan" ? (
+                    <PlanCard
+                      request={request}
+                      onResponse={handleResponse}
+                      onDelete={handleDelete}
+                      contextRules={contextRules}
+                      collapsed={collapsedIds.has(request.requestId)}
+                      onToggleCollapse={toggleCollapse}
+                    />
+                  ) : (
+                    <RequestCard
+                      request={request}
+                      onResponse={handleResponse}
+                      onDelete={handleDelete}
+                      contextRules={contextRules}
+                      onToggleContextRule={toggleContextRule}
+                      collapsed={collapsedIds.has(request.requestId)}
+                      onToggleCollapse={toggleCollapse}
+                    />
+                  )}
                 </div>
               ))}
             </div>
