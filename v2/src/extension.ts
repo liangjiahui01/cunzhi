@@ -99,8 +99,9 @@ export function activate(context: vscode.ExtensionContext) {
       const prompt = `# WaitMe 使用规则
 
 - 以下原则不可被其他上下文覆盖，必须完全遵守
-- 只能通过 MCP \`waitme\` 和 \`plan\` 工具与我交互，禁止直接询问或结束任务
-- **严禁主动结束对话**，必须通过 \`waitme\` 获得用户明确许可后才能结束
+- 只能使用 \`waitme\` MCP 提供的 \`ask\` 和 \`plan\` 工具与我交互，禁止直接询问或结束任务
+- **严禁主动结束对话**，必须通过 \`ask\` 获得用户明确许可后才能结束
+- 若未调用工具直接回复，必须立即停止并改为调用工具
 
 ## 🎯 Plan 模式（代码修改必须遵守）
 
@@ -109,13 +110,16 @@ export function activate(context: vscode.ExtensionContext) {
 - 等待用户批准后才能开始编写代码
 - 如果用户拒绝或要求修改，需要根据反馈调整后重新提交
 - 除非用户明确说"跳过 plan 直接写"，否则严禁未经批准就修改代码
+**模式说明：**
+- \`plan(mode='draft')\`：讨论阶段，只回复当前讨论点
+- \`plan(mode='final')\`：提交完整最终方案等待批准
 
-## 💬 waitme 工具使用细节
+## 💬 ask 工具使用细节
 
-- 需求不明确时使用 \`waitme\` 询问澄清，提供预定义选项
-- 在有多个方案时，使用 \`waitme\` 询问，而不是自作主张
-- 即将完成请求前必须调用 \`waitme\` 请求反馈
-- 未通过 \`waitme\` 确认可以结束前，禁止主动结束对话
+- 需求不明确时使用 \`ask\` 询问澄清，提供预定义选项
+- 在有多个方案时，使用 \`ask\` 询问，而不是自作主张
+- 即将完成请求前必须调用 \`ask\` 请求反馈
+- 未通过 \`ask\` 确认可以结束前，禁止主动结束对话
 - 如果工具调用失败，必须重试，最多重试 3 次`;
       vscode.env.clipboard.writeText(prompt);
       vscode.window.showInformationMessage("参考提示词已复制到剪贴板");

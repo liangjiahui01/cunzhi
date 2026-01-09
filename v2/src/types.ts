@@ -1,5 +1,5 @@
 export interface PlanData {
-  mode: "discuss" | "final";
+  mode: "draft" | "final";
   title: string;
   description: string;
   steps?: string[];
@@ -13,7 +13,7 @@ export interface WaitMeRequest {
   predefinedOptions?: string[];
   isMarkdown?: boolean;
   timestamp: string;
-  type?: "waitme" | "plan";
+  type?: "ask" | "plan";
   planData?: PlanData;
 }
 

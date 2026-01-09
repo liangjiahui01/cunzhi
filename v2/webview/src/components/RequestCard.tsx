@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { ImagePreview } from "./ImagePreview";
@@ -168,6 +169,12 @@ export function RequestCard({
                 {collapsed ? "▶" : "▼"}
               </Button>
             )}
+            <Badge
+              variant="outline"
+              className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+            >
+              💬 Ask
+            </Badge>
             <span className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={request.projectPath}>
               {request.projectPath.split('/').pop()}
             </span>
@@ -340,7 +347,7 @@ export function RequestCard({
                   size="sm"
                   onClick={() => {
                     setIsSubmitting(true);
-                    const combinedOptions = [...selectedOptions, "enter_discussion_mode"];
+                    const combinedOptions = [...selectedOptions, "enter_draft_mode"];
                     onResponse(request.requestId, userInput || undefined, combinedOptions, images.length > 0 ? images : undefined);
                   }}
                   disabled={isSubmitting}
@@ -365,16 +372,16 @@ export function RequestCard({
                       "⚠️ 请使用 plan 工具提交完整实施方案后再执行"
                     ].filter(Boolean).join("\n\n");
                     // 合并选项
-                    const combinedOptions = [...selectedOptions, "switch_to_plan"];
+                    const combinedOptions = [...selectedOptions, "enter_final_mode"];
                     onResponse(request.requestId, combinedInput, combinedOptions, images.length > 0 ? images : undefined);
                   }}
                   disabled={isSubmitting}
                   className="border-blue-500/50 text-blue-600 hover:bg-blue-500/10"
                 >
-                  📋 请先给方案
+                  📋 直接给方案
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>让 AI 先提交 Plan 方案</TooltipContent>
+              <TooltipContent>跳过讨论，直接让 AI 提交最终方案</TooltipContent>
             </Tooltip>
 
             <Tooltip>

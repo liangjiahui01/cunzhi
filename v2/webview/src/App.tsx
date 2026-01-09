@@ -198,8 +198,8 @@ function App() {
         : "";
 
       // 检测是否进入讨论模式，添加模式上下文
-      const isDiscussionMode = selectedOptions?.includes("enter_discussion_mode");
-      const modePrefix = isDiscussionMode
+      const isDraftMode = selectedOptions?.includes("enter_draft_mode");
+      const modePrefix = isDraftMode
         ? "📌 讨论模式 | 先和用户聊清楚需求，再用 plan 工具提交方案\n\n"
         : "";
 
@@ -223,13 +223,15 @@ function App() {
     (
       requestId: string,
       userInput?: string,
-      selectedOptions?: string[]
+      selectedOptions?: string[],
+      images?: ImageAttachment[]
     ) => {
       vscode.postMessage({
         type: "response",
         requestId,
         userInput,
         selectedOptions,
+        images,
       });
     },
     []
