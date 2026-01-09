@@ -90,10 +90,10 @@ function saveState(key: string, value: unknown): void {
 }
 
 const INITIAL_CONTEXT_RULES: ContextRule[] = [
-  { id: "no_docs", label: "不要生成总结性Markdown文档", enabled: true, content: "❌请记住，不要生成总结性Markdown文档" },
-  { id: "no_tests", label: "不要生成测试脚本", enabled: true, content: "❌请记住，不要生成测试脚本" },
-  { id: "no_compile", label: "不要编译，用户自己编译", enabled: true, content: "❌请记住，不要编译，用户自己编译" },
-  { id: "no_run", label: "不要运行，用户自己运行", enabled: true, content: "❌请记住，不要运行，用户自己运行" },
+  { id: "no_docs", label: "不要生成总结性Markdown文档", enabled: false, content: "❌请记住，不要生成总结性Markdown文档" },
+  { id: "no_tests", label: "不要生成测试脚本", enabled: false, content: "❌请记住，不要生成测试脚本" },
+  { id: "no_compile", label: "不要编译，用户自己编译", enabled: false, content: "❌请记住，不要编译，用户自己编译" },
+  { id: "no_run", label: "不要运行，用户自己运行", enabled: false, content: "❌请记住，不要运行，用户自己运行" },
 ];
 
 type TabType = "current" | "all" | "history";
@@ -197,7 +197,15 @@ function App() {
         ? "\n\n" + enabledRules.map((r) => r.content).join("\n")
         : "";
 
-      const finalInput = userInput ? userInput + contextSuffix : (contextSuffix ? contextSuffix.trim() : undefined);
+      // 检测是否进入讨论模式，添加模式上下文
+      const isDiscussionMode = selectedOptions?.includes("enter_discussion_mode");
+      const modePrefix = isDiscussionMode
+        ? "📌 讨论模式 | 先和用户聊清楚需求，再用 plan 工具提交方案\n\n"
+        : "";
+
+      const finalInput = userInput 
+        ? modePrefix + userInput + contextSuffix 
+        : (modePrefix || contextSuffix ? (modePrefix + contextSuffix).trim() : undefined);
 
       vscode.postMessage({
         type: "response",
@@ -208,6 +216,23 @@ function App() {
       });
     },
     [contextRules]
+  );
+
+  // PlanCard 专用响应函数，不附加执行相关的 contextRules
+  const handlePlanResponse = useCallback(
+    (
+      requestId: string,
+      userInput?: string,
+      selectedOptions?: string[]
+    ) => {
+      vscode.postMessage({
+        type: "response",
+        requestId,
+        userInput,
+        selectedOptions,
+      });
+    },
+    []
   );
 
   const handleDelete = useCallback((requestId: string) => {
@@ -415,7 +440,7 @@ function App() {
                   {request.type === "plan" ? (
                     <PlanCard
                       request={request}
-                      onResponse={handleResponse}
+                      onResponse={handlePlanResponse}
                       onDelete={handleDelete}
                       contextRules={contextRules}
                       collapsed={collapsedIds.has(request.requestId)}

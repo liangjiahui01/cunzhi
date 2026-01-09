@@ -340,6 +340,25 @@ export function RequestCard({
                   size="sm"
                   onClick={() => {
                     setIsSubmitting(true);
+                    const combinedOptions = [...selectedOptions, "enter_discussion_mode"];
+                    onResponse(request.requestId, userInput || undefined, combinedOptions, images.length > 0 ? images : undefined);
+                  }}
+                  disabled={isSubmitting}
+                  className="border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+                >
+                  💬 先讨论
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>需求不明确时，先和 AI 讨论再给方案</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsSubmitting(true);
                     // 合并用户输入和切换提示
                     const combinedInput = [
                       userInput,
