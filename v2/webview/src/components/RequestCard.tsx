@@ -53,23 +53,26 @@ export function RequestCard({
 }: Props) {
   const [userInput, setUserInput] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [optionInput, setOptionInput] = useState(""); // 选项补充说明
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = useCallback(() => {
-    if (!userInput && selectedOptions.length === 0 && images.length === 0) {
+    if (!userInput && !optionInput && selectedOptions.length === 0 && images.length === 0) {
       return;
     }
     setIsSubmitting(true);
+    // 合并 userInput 和 optionInput
+    const combinedInput = [userInput, optionInput].filter(Boolean).join("\n") || undefined;
     onResponse(
       request.requestId,
-      userInput || undefined,
+      combinedInput,
       selectedOptions.length > 0 ? selectedOptions : undefined,
       images.length > 0 ? images : undefined
     );
-  }, [request.requestId, userInput, selectedOptions, images, onResponse]);
+  }, [request.requestId, userInput, optionInput, selectedOptions, images, onResponse]);
 
   const handleQuickResponse = useCallback(
     (option: string) => {
@@ -273,6 +276,15 @@ export function RequestCard({
                 </label>
               ))}
             </div>
+            {/* 选项补充输入框 */}
+            <input
+              type="text"
+              value={optionInput}
+              onChange={(e) => setOptionInput(e.target.value)}
+              placeholder="补充说明（可选）"
+              disabled={isSubmitting}
+              className="mt-2 w-full px-3 py-1.5 text-sm rounded-md border border-border/50 bg-background/50 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+            />
           </div>
         )}
 
@@ -334,7 +346,7 @@ export function RequestCard({
           <div className="flex items-center gap-2">
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || (!userInput && selectedOptions.length === 0 && images.length === 0)}
+              disabled={isSubmitting || (!userInput && !optionInput && selectedOptions.length === 0 && images.length === 0)}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg hover:shadow-xl transition-all"
             >
               发送{selectedOptions.length > 0 && ` (${selectedOptions.length})`}
