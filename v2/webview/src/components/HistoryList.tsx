@@ -1,9 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { WaitMeRequest } from "../types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
+type FilterType = "all" | "starred";
 
 interface Props {
   history: WaitMeRequest[];
@@ -11,11 +13,24 @@ interface Props {
   onDeleteItems?: (ids: string[]) => void;
   onRefresh?: () => void;
   isLoading?: boolean;
+  onToggleStar?: (requestId: string) => void;
 }
 
-export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, isLoading }: Props) {
+export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, isLoading, onToggleStar }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelecting, setIsSelecting] = useState(false);
+  const [filter, setFilter] = useState<FilterType>("all");
+
+  // 根据筛选条件过滤历史记录
+  const filteredHistory = useMemo(() => {
+    if (filter === "starred") {
+      return history.filter(h => h.starred);
+    }
+    return history;
+  }, [history, filter]);
+
+  // 统计收藏数量
+  const starredCount = useMemo(() => history.filter(h => h.starred).length, [history]);
 
   const toggleSelect = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -31,8 +46,8 @@ export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, is
   }, []);
 
   const selectAll = useCallback(() => {
-    setSelectedIds(new Set(history.map((h) => h.requestId)));
-  }, [history]);
+    setSelectedIds(new Set(filteredHistory.map((h) => h.requestId)));
+  }, [filteredHistory]);
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
@@ -47,6 +62,11 @@ export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, is
     }
   }, [selectedIds, onDeleteItems]);
 
+  const handleStarClick = useCallback((e: React.MouseEvent, requestId: string) => {
+    e.stopPropagation();
+    onToggleStar?.(requestId);
+  }, [onToggleStar]);
+
   if (history.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] text-muted-foreground">
@@ -59,7 +79,34 @@ export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, is
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 mb-3">
+      {/* 工具栏 */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {/* 筛选按钮组 */}
+        <div className="flex items-center gap-1 mr-2">
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter("all")}
+            className={cn(
+              "h-7 text-xs",
+              filter === "all" ? "bg-primary/90" : "glass-button"
+            )}
+          >
+            全部 ({history.length})
+          </Button>
+          <Button
+            variant={filter === "starred" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilter("starred")}
+            className={cn(
+              "h-7 text-xs",
+              filter === "starred" ? "bg-amber-500 hover:bg-amber-600 text-white" : "glass-button"
+            )}
+          >
+            ⭐ 收藏 ({starredCount})
+          </Button>
+        </div>
+
         {onRefresh && (
           <Button 
             variant="outline" 
@@ -96,18 +143,46 @@ export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, is
         )}
       </div>
 
-      {history.map((item, index) => (
+      {/* 空状态提示（筛选后无结果） */}
+      {filteredHistory.length === 0 && filter === "starred" && (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <div className="text-3xl mb-3 opacity-40">⭐</div>
+          <p className="text-sm">暂无收藏</p>
+          <p className="text-xs mt-1 opacity-60">点击卡片右上角的星标来收藏</p>
+        </div>
+      )}
+
+      {/* 历史卡片列表 */}
+      {filteredHistory.map((item, index) => (
         <Card
           key={item.requestId}
           onClick={() => !isSelecting && onItemClick(item)}
           className={cn(
-            "p-3 cursor-pointer transition-all duration-200 animate-fade-in-up",
+            "p-3 cursor-pointer transition-all duration-200 animate-fade-in-up relative",
             "glass-card hover:shadow-xl",
-            selectedIds.has(item.requestId) && "ring-2 ring-primary"
+            selectedIds.has(item.requestId) && "ring-2 ring-primary",
+            item.starred && "ring-1 ring-amber-400/50 bg-amber-500/5"
           )}
           style={{ animationDelay: `${index * 30}ms` }}
         >
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+          {/* 收藏按钮 */}
+          {onToggleStar && (
+            <button
+              onClick={(e) => handleStarClick(e, item.requestId)}
+              className={cn(
+                "absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200",
+                "hover:bg-amber-500/20 active:scale-90",
+                item.starred 
+                  ? "text-amber-400 hover:text-amber-500" 
+                  : "text-muted-foreground/40 hover:text-amber-400"
+              )}
+              title={item.starred ? "取消收藏" : "收藏"}
+            >
+              <span className="text-base">{item.starred ? "⭐" : "☆"}</span>
+            </button>
+          )}
+
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2 pr-8">
             <div className="flex items-center gap-2">
               {isSelecting && (
                 <input
@@ -125,7 +200,7 @@ export function HistoryList({ history, onItemClick, onDeleteItems, onRefresh, is
             <span>{new Date(item.timestamp).toLocaleString()}</span>
           </div>
 
-          <p className="text-sm line-clamp-2 mb-2">
+          <p className="text-sm line-clamp-2 mb-2 pr-8">
             {item.message.replace(/[#*`]/g, "").slice(0, 100)}
             {item.message.length > 100 && "..."}
           </p>

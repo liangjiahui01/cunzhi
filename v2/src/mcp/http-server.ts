@@ -94,7 +94,7 @@ export class HttpServer {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET, POST, DELETE, OPTIONS"
+      "GET, POST, DELETE, PATCH, OPTIONS"
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
@@ -137,6 +137,8 @@ export class HttpServer {
       this.handleClearHistory(res);
     } else if (req.method === "DELETE" && url.pathname.startsWith("/api/history/")) {
       this.handleDeleteHistory(url, res);
+    } else if (req.method === "PATCH" && url.pathname.match(/^\/api\/history\/[^/]+\/star$/)) {
+      this.handleToggleStar(url, req, res);
     } else {
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not found" }));
@@ -468,6 +470,43 @@ export class HttpServer {
     this.saveHistory([]);
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: true }));
+  }
+
+  private handleToggleStar(url: URL, req: http.IncomingMessage, res: http.ServerResponse): void {
+    // 从 URL 提取 requestId: /api/history/{requestId}/star
+    const parts = url.pathname.split("/");
+    const requestId = parts[3]; // ["", "api", "history", "{id}", "star"]
+    
+    if (!requestId) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Missing request ID" }));
+      return;
+    }
+
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      try {
+        const { starred } = JSON.parse(body) as { starred: boolean };
+        const history = this.loadHistory();
+        const itemIndex = history.findIndex(h => h.requestId === requestId);
+        
+        if (itemIndex === -1) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "History item not found" }));
+          return;
+        }
+
+        history[itemIndex].starred = starred;
+        this.saveHistory(history);
+        
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, starred }));
+      } catch (e) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Invalid JSON" }));
+      }
+    });
   }
 
   // ============ 请求管理 ============

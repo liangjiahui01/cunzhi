@@ -67,6 +67,23 @@ async function clearAllHistory(): Promise<void> {
   }
 }
 
+async function toggleHistoryStar(requestId: string, starred: boolean): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/api/history/${requestId}/star`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ starred }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.starred;
+    }
+  } catch (e) {
+    console.error("Failed to toggle star:", e);
+  }
+  return !starred; // 失败时返回原值
+}
+
 function loadState<T>(key: string, defaultValue: T): T {
   try {
     const state = vscode.getState() as Record<string, unknown> | undefined;
@@ -272,6 +289,20 @@ function App() {
     });
   }, []);
 
+  // 收藏/取消收藏
+  const handleToggleStar = useCallback(async (requestId: string) => {
+    const item = history.find(h => h.requestId === requestId);
+    if (!item) return;
+    
+    const newStarred = !item.starred;
+    // 乐观更新本地状态
+    setHistory(prev => prev.map(h => 
+      h.requestId === requestId ? { ...h, starred: newStarred } : h
+    ));
+    // 同步到服务端
+    await toggleHistoryStar(requestId, newStarred);
+  }, [history]);
+
   // Detect VSCode theme
   const [vsCodeTheme, setVsCodeTheme] = useState<"dark" | "light">(() => {
     const body = document.body;
@@ -424,6 +455,7 @@ function App() {
               onDeleteItems={deleteHistoryItems}
               onRefresh={loadHistory}
               isLoading={historyLoading}
+              onToggleStar={handleToggleStar}
             />
           ) : filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)] text-muted-foreground">

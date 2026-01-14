@@ -17,6 +17,7 @@ export interface WaitMeRequest {
   response?: WaitMeResponse;
   type?: "ask" | "plan";
   planData?: PlanData;
+  starred?: boolean; // 收藏标记
 }
 
 export interface WaitMeResponse {

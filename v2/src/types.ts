@@ -55,4 +55,5 @@ export interface HistoryItem {
   timestamp: string;
   status: "pending" | "completed";
   response?: WaitMeResponse;
+  starred?: boolean; // 收藏标记
 }
